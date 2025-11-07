@@ -1,32 +1,294 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>CodeGen</title>
+  <title>CodeGen – Create System</title>
 
-  <!-- iOS + PWA -->
+  <!-- PWA bits (keep standalone app feel) -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="CodeGen">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#00ff90">
-  <link rel="apple-touch-icon" href="icon-192.png">
 
   <style>
-    html,body{height:100%;margin:0}
-    body{
-      font-family:-apple-system,Helvetica,Arial;
-      display:flex;justify-content:center;align-items:center;
-      background:#000;color:#00ff90;font-size:30px
+    :root{
+      --bg:#000; --fg:#e8ffe8; --accent:#00ff90; --muted:#8a8a8a; --danger:#ff4d6d; --mk:#00c8ff;
     }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,system-ui,Helvetica,Arial}
+    .wrap{max-width:900px;margin:0 auto;padding:20px}
+    h1{font-size:24px;margin:6px 0 12px;color:var(--accent)}
+    .card{background:#0e0e0e;border:1px solid #151515;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 8px 30px rgba(0,0,0,0.35)}
+    label{display:block;font-size:13px;color:#bdbdbd;margin:10px 0 6px}
+    input[type=text]{width:100%;background:#0a0a0a;border:1px solid #1e1e1e;color:var(--fg);border-radius:12px;padding:12px 14px;font-size:16px;outline:none}
+    input[type=text]::placeholder{color:#666}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .row > *{flex:1 1 160px}
+    .btnbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    button{border:1px solid #1f1f1f;background:#111;color:var(--fg);padding:10px 14px;border-radius:12px;font-size:15px}
+    button.primary{background:var(--accent);color:#002a16;border-color:#00c070;font-weight:600}
+    button.warn{background:#1b0006;color:#ffd9e0;border-color:#3a0a16}
+    button:active{transform:translateY(1px)}
+    .muted{color:var(--muted)}
+    .out{white-space:pre-wrap;background:#060606;border:1px solid #101010;border-radius:12px;padding:12px;max-height:50vh;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;line-height:1.35}
+    .ok{color:var(--fg)}
+    .mk{color:var(--mk)}
+    .err{color:var(--danger)}
+    .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#121212;border:1px solid #202020;margin-left:8px;color:#ccc}
+    .footer{margin-top:10px;font-size:12px;color:#8d8d8d}
+    .inline{display:inline-flex;gap:8px;align-items:center}
+    .hint{font-size:12px;color:#aaa}
   </style>
 </head>
 <body>
-  workingzzz
+  <div class="wrap">
+    <h1>Create System <span class="tag">TMK → MK → CK</span></h1>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label for="tmk">TMK (digits, e.g. 53142). Tap R5/R6 to auto-generate.</label>
+          <input id="tmk" type="text" inputmode="numeric" placeholder="Enter TMK like 53142">
+        </div>
+        <div>
+          <label for="array">Array (same length as TMK; use M/C per position)</label>
+          <input id="array" type="text" placeholder="Example: MCMC C (no spaces) → e.g. MCMCC">
+          <div class="hint">Each character: <b>M</b>=mastered, <b>C</b>=change. Length must equal TMK.</div>
+        </div>
+      </div>
+
+      <div class="btnbar">
+        <button id="r5">🎲 R5</button>
+        <button id="r6">🎲 R6</button>
+        <button class="primary" id="build">Build Coding Tree</button>
+        <button id="clear">Clear</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="inline">
+        <strong>Output</strong>
+        <span class="tag" id="stats">—</span>
+      </div>
+      <div id="out" class="out" aria-live="polite">Enter TMK + Array, then press “Build Coding Tree”.</div>
+      <div class="btnbar">
+        <button id="copy">Copy</button>
+        <button id="download">Download CSV</button>
+        <span class="hint">MKs in cyan, CKs in white, errors in red.</span>
+      </div>
+      <div class="footer">Rules enforced: Maximum Adjacent Cut &gt; 7 (error), First Cut ≥ 8 (error). Even/odd progressions respected.</div>
+    </div>
+  </div>
+
   <script>
-    // Register within /CodeGen/ scope (no leading slash!)
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+    // ---------- Utility ----------
+    const $ = s => document.querySelector(s);
+    const randInt = (a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+
+    function hasMaxAdjacentCutError(arr){
+      for (let i=0;i<arr.length-1;i++){
+        if (Math.abs(arr[i]-arr[i+1])>7) return true;
+      }
+      return false;
+    }
+    function hasDeepestFirstCutError(arr){
+      return arr[0] >= 8;
+    }
+    function generateRandomTMK(pinCount){
+      // Retry until it passes both checks
+      while(true){
+        const tmk = Array.from({length: pinCount}, ()=>randInt(0,9));
+        if (!hasMaxAdjacentCutError(tmk) && !hasDeepestFirstCutError(tmk)) {
+          return tmk.join('');
+        }
+      }
+    }
+    function evenSet(exclude){ // 0,2,4,6,8 except 'exclude'
+      const s=[0,2,4,6,8]; return s.filter(v=>v!==exclude);
+    }
+    function oddSet(exclude){ // 1,3,5,7,9 except 'exclude'
+      const s=[1,3,5,7,9]; return s.filter(v=>v!==exclude);
+    }
+
+    // ---------- Core generation (ported from your Python) ----------
+    function buildCodingTree(tmkStr, arrayStr){
+      const tmk = tmkStr.split('').map(d=>+d);
+      const masterPos = [...arrayStr].map((c,i)=>c.toUpperCase()==='M'?i:-1).filter(i=>i>=0);
+      const changePos = [...arrayStr].map((c,i)=>c.toUpperCase()==='C'?i:-1).filter(i=>i>=0);
+
+      // Generate all Master Keys by varying the M positions with same-parity progressions (exclude original)
+      const masterKeys = [];
+      (function genMK(cuts, idx){
+        if (idx >= masterPos.length){ masterKeys.push(cuts.slice()); return; }
+        const pos = masterPos[idx];
+        const orig = tmk[pos];
+        const options = (orig % 2 === 0) ? evenSet(orig) : oddSet(orig);
+        for (const depth of options){
+          cuts[pos] = depth;
+          genMK(cuts, idx+1);
+        }
+        cuts[pos] = orig;
+      })(tmk.slice(), 0);
+
+      // For each MK, generate all CKs by varying the C positions with same-parity progressions (exclude original)
+      function genCKs(base){
+        const res=[];
+        (function rec(cuts, idx){
+          if (idx >= changePos.length){ res.push(cuts.slice()); return; }
+          const pos = changePos[idx];
+          const orig = cuts[pos];
+          const options = (orig % 2 === 0) ? evenSet(orig) : oddSet(orig);
+          for (const depth of options){
+            cuts[pos] = depth;
+            rec(cuts, idx+1);
+          }
+          cuts[pos] = orig;
+        })(base.slice(), 0);
+        return res;
+      }
+
+      // Assemble printable lines and CSV rows
+      const lines=[];
+      const csvRows=[["Key","Code","Error"]];
+
+      lines.push(`TMK   : ${tmkStr}`);
+      lines.push(`Array : ${arrayStr}`);
+      lines.push("");
+
+      let mkCount=0, ckTotal=0;
+
+      masterKeys.forEach((mkCuts, i)=>{
+        mkCount++;
+        const mkLabel = `MK${i+1}`;
+        const mkErrAdj = hasMaxAdjacentCutError(mkCuts);
+        const mkErrDeep = hasDeepestFirstCutError(mkCuts);
+        const mkErrMsg = (mkErrAdj && mkErrDeep) ? "Maximum Adjacent Cut Error & First Cut Depth Error"
+                        : mkErrAdj ? "Maximum Adjacent Cut Error"
+                        : mkErrDeep ? "First Cut Depth Error" : "";
+        const mkCode = mkCuts.join("");
+
+        lines.push(`%c${mkLabel} - ${mkCode}${mkErrMsg?("  " + mkErrMsg):""} %c`.trim());
+        csvRows.push([mkLabel, mkCode, mkErrMsg]);
+
+        const cks = genCKs(mkCuts);
+        cks.forEach((ckCuts, j)=>{
+          ckTotal++;
+          const ckLabel = `CK${i+1}.${(j+1)}`;
+          const ckCode = ckCuts.join("");
+          // CK error carries MK adjacent error OR own adjacent; + own deepest-first
+          const ckAdj = mkErrAdj || hasMaxAdjacentCutError(ckCuts);
+          const ckDeep = hasDeepestFirstCutError(ckCuts);
+          const ckErrMsg = (ckAdj && ckDeep) ? "Maximum Adjacent Cut Error & First Cut Depth Error"
+                         : ckAdj ? "Maximum Adjacent Cut Error"
+                         : ckDeep ? "First Cut Depth Error" : "";
+          lines.push(`    ${ckLabel.padEnd(8)} - ${ckCode}${ckErrMsg?("  " + ckErrMsg):""}`);
+          csvRows.push([ckLabel, ckCode, ckErrMsg]);
+        });
+
+        lines.push(""); // spacer between MK groups
+      });
+
+      return { lines, csvRows, mkCount, ckTotal };
+    }
+
+    // ---------- UI wiring ----------
+    const outEl = $('#out');
+    const statsEl = $('#stats');
+
+    function printLines(lines){
+      // Color MK lines cyan and error parts red
+      // We'll join using \n, and inject spans for styling.
+      const html = lines.map(line=>{
+        if (line.startsWith('%cMK')) {
+          // MK line with style markers
+          const safe = line.replace(/%c/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          const [head, ...rest] = safe.split('  ');
+          const err = rest.join('  ');
+          return `<span class="mk">${head}</span>${err?`  <span class="err">${err}</span>`:''}`;
+        } else if (line.includes("Error")) {
+          const esc = line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          return esc.replace(/(Error.*)$/,'<span class="err">$1</span>');
+        } else {
+          return line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+      }).join('\n');
+      outEl.innerHTML = html;
+    }
+
+    function toCSV(rows){
+      return rows.map(r=>r.map(v=>{
+        const s = (v==null?'':String(v));
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+      }).join(',')).join('\n');
+    }
+
+    $('#r5').onclick = ()=>{
+      const r = generateRandomTMK(5);
+      $('#tmk').value = r;
+      // make a default array guess same length, e.g., "MCMCC"
+      $('#array').value = 'M'.padEnd(5,'C'); // simple default
+    };
+    $('#r6').onclick = ()=>{
+      const r = generateRandomTMK(6);
+      $('#tmk').value = r;
+      $('#array').value = 'M'.padEnd(6,'C');
+    };
+
+    $('#clear').onclick = ()=>{
+      $('#tmk').value = '';
+      $('#array').value = '';
+      outEl.textContent = 'Enter TMK + Array, then press “Build Coding Tree”.';
+      statsEl.textContent = '—';
+    };
+
+    $('#build').onclick = ()=>{
+      const tmk = $('#tmk').value.trim();
+      const arr = $('#array').value.trim().replace(/\s+/g,'');
+      if (!/^\d+$/.test(tmk) || tmk.length===0){ alert('TMK must be digits only.'); return; }
+      if (arr.length !== tmk.length){ alert('Array length must match TMK length.'); return; }
+      if (!/^[MCmc]+$/.test(arr)){ alert('Array must contain only M and C.'); return; }
+
+      const {lines, csvRows, mkCount, ckTotal} = buildCodingTree(tmk, arr);
+      printLines(lines);
+      statsEl.textContent = `TMK len ${tmk.length} · MKs ${mkCount} · CKs ${ckTotal}`;
+
+      // stash for copy/download
+      window._lastCSV = toCSV(csvRows);
+      window._lastText = lines.join('\n');
+    };
+
+    $('#copy').onclick = async ()=>{
+      if (!window._lastText){ alert('Build first.'); return; }
+      try{
+        await navigator.clipboard.writeText(window._lastText);
+        alert('Copied results to clipboard.');
+      }catch{
+        // fallback
+        const ta = document.createElement('textarea');
+        ta.value = window._lastText;
+        document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+        alert('Copied results to clipboard.');
+      }
+    };
+
+    $('#download').onclick = ()=>{
+      if (!window._lastCSV){ alert('Build first.'); return; }
+      const blob = new Blob([window._lastCSV],{type:'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'coding_tree.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    };
+
+    // Keep offline functionality
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(console.error);
+    }
   </script>
 </body>
 </html>
