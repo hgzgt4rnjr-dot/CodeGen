@@ -164,9 +164,10 @@
         const mkLabel = `MK${i+1}`;
         const mkErrAdj = hasMaxAdjacentCutError(mkCuts);
         const mkErrDeep = hasDeepestFirstCutError(mkCuts);
-        const mkErrMsg = (mkErrAdj && mkErrDeep) ? "Maximum Adjacent Cut Error & First Cut Depth Error"
-                        : mkErrAdj ? "Maximum Adjacent Cut Error"
-                        : mkErrDeep ? "First Cut Depth Error" : "";
+        const mkErrMsg = (mkErrAdj && mkErrDeep) ? "MAC & DFC Error"
+                        : mkErrAdj ? "Max Adj Cut Error"
+                        : mkErrDeep ? "DFC Error" : "";
+
         const mkCode = mkCuts.join("");
 
         lines.push(`%c${mkLabel} - ${mkCode}${mkErrMsg?("  " + mkErrMsg):""} %c`.trim());
@@ -180,9 +181,10 @@
           // CK error carries MK adjacent error OR own adjacent; + own deepest-first
           const ckAdj = mkErrAdj || hasMaxAdjacentCutError(ckCuts);
           const ckDeep = hasDeepestFirstCutError(ckCuts);
-          const ckErrMsg = (ckAdj && ckDeep) ? "Maximum Adjacent Cut Error & First Cut Depth Error"
-                         : ckAdj ? "Maximum Adjacent Cut Error"
-                         : ckDeep ? "First Cut Depth Error" : "";
+          const ckErrMsg = (ckAdj && ckDeep) ? "MAC & DFC Error"
+                         : ckAdj ? "Max Adj Cut Error"
+                         : ckDeep ? "DFC Error" : "";
+
           lines.push(`    ${ckLabel.padEnd(8)} - ${ckCode}${ckErrMsg?("  " + ckErrMsg):""}`);
           csvRows.push([ckLabel, ckCode, ckErrMsg]);
         });
@@ -248,7 +250,8 @@
       const arr = $('#array').value.trim().replace(/\s+/g,'');
       if (!/^\d+$/.test(tmk) || tmk.length===0){ alert('TMK must be digits only.'); return; }
       if (arr.length !== tmk.length){ alert('Array length must match TMK length.'); return; }
-      if (!/^[MCmc]+$/.test(arr)){ alert('Array must contain only M and C.'); return; }
+      if (!/^[MCmc0]+$/.test(arr)){ alert('Array must contain only M, C, or 0.'); return; }
+
 
       const {lines, csvRows, mkCount, ckTotal} = buildCodingTree(tmk, arr);
       printLines(lines);
