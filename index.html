@@ -14,7 +14,7 @@
 
   <style>
     :root{
-      --bg:#000; --fg:#e8ffe8; --accent:#00ff90; --muted:#8a8a8a; --danger:#ff4d6d; --mk:#00c8ff;
+      --bg:#000; --fg:#e8ffe8; --accent:#00ff90; --muted:#8a8a8a; --danger:#ff4d6d; --mk:#00c8ff; --tmk:#ff00ff;
     }
     *{box-sizing:border-box}
     html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,system-ui,Helvetica,Arial}
@@ -36,6 +36,7 @@
     .ok{color:var(--fg)}
     .mk{color:var(--mk)}
     .err{color:var(--danger)}
+    .tmk{color:var(--tmk)}
     .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#121212;border:1px solid #202020;margin-left:8px;color:#ccc}
     .footer{margin-top:10px;font-size:12px;color:#8d8d8d}
     .inline{display:inline-flex;gap:8px;align-items:center}
@@ -157,7 +158,7 @@
       lines.push(`Array : ${arrayStr}`);
       lines.push("");
 
-      let mkCount=0, ckTotal=0;
+      let mkCount=0, ckTotal=0, errorCount=0;
 
       masterKeys.forEach((mkCuts, i)=>{
         mkCount++;
@@ -167,6 +168,8 @@
         const mkErrMsg = (mkErrAdj && mkErrDeep) ? "MAC & DFC Error"
                         : mkErrAdj ? "MAC Error"
                         : mkErrDeep ? "DFC Error" : "";
+
+        if (mkErrMsg) errorCount++;
 
         const mkCode = mkCuts.join("");
 
@@ -185,6 +188,8 @@
                          : ckAdj ? "MAC Error"
                          : ckDeep ? "DFC Error" : "";
 
+          if (ckErrMsg) errorCount++;
+
           lines.push(`    ${ckLabel.padEnd(8)} - ${ckCode}${ckErrMsg?("  " + ckErrMsg):""}`);
           csvRows.push([ckLabel, ckCode, ckErrMsg]);
         });
@@ -192,7 +197,7 @@
         lines.push(""); // spacer between MK groups
       });
 
-      return { lines, csvRows, mkCount, ckTotal };
+      return { lines, csvRows, mkCount, ckTotal, errorCount };
     }
 
     // ---------- UI wiring ----------
@@ -221,6 +226,13 @@
                     const tail = rest.join('  ');
                     return `<span class="mk">${head}</span>${tail ? `  ${tail}` : ''}`;
                 }
+
+            } else if (line.startsWith('TMK   :')) {
+                const esc = line
+                    .replace(/&/g,'&amp;')
+                    .replace(/</g,'&lt;')
+                    .replace(/>/g,'&gt;');
+                return `<span class="tmk">${esc}</span>`;
 
             } else {
                 // CK lines and any other lines
@@ -270,9 +282,9 @@
       if (!/^[MCmc0]+$/.test(arr)){ alert('Array must contain only M, C, or 0.'); return; }
 
 
-      const {lines, csvRows, mkCount, ckTotal} = buildCodingTree(tmk, arr);
+      const {lines, csvRows, mkCount, ckTotal, errorCount} = buildCodingTree(tmk, arr);
       printLines(lines);
-      statsEl.textContent = `TMK len ${tmk.length} · MKs ${mkCount} · CKs ${ckTotal}`;
+      statsEl.textContent = `TMK ${tmk.length} Pin · MKs ${mkCount} · CK ${ckTotal} · Errors ${errorCount}`;
 
       // stash for copy/download
       window._lastCSV = toCSV(csvRows);
