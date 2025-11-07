@@ -41,6 +41,28 @@
     .footer{margin-top:10px;font-size:12px;color:#8d8d8d}
     .inline{display:inline-flex;gap:8px;align-items:center}
     .hint{font-size:12px;color:#aaa}
+        /* Modal (Array Assist) */
+    .modal[hidden]{display:none!important}
+    .modal{
+      position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+      z-index:9999;
+    }
+    .modal .backdrop{
+      position:absolute; inset:0; background:rgba(0,0,0,0.55); backdrop-filter: blur(2px);
+    }
+    .modal .dialog{
+      position:relative; background:#0e0e0e; border:1px solid #202020; border-radius:16px;
+      width:min(92vw,560px); padding:16px; box-shadow:0 10px 40px rgba(0,0,0,.6)
+    }
+    .modal h3{margin:0 0 8px 0; color:var(--accent); font-size:18px}
+    .modal .row{display:flex; gap:10px; margin-top:8px}
+    .modal .row > div{flex:1 1 160px}
+    .modal .btnbar{display:flex; gap:10px; justify-content:flex-end; margin-top:14px}
+    .modal input[type=number]{
+      width:100%; background:#0a0a0a; border:1px solid #1e1e1e; color:var(--fg);
+      border-radius:12px; padding:10px 12px; font-size:16px; outline:none
+    }
+
   </style>
 </head>
 <body>
@@ -63,6 +85,7 @@
       <div class="btnbar">
         <button id="r5">🎲 R5</button>
         <button id="r6">🎲 R6</button>
+        <button id="assist">Array Assist</button>
         <button class="primary" id="build">Build Coding Tree</button>
         <button id="clear">Clear</button>
       </div>
@@ -82,6 +105,34 @@
       <div class="footer">Rules enforced: Maximum Adjacent Cut &gt; 7 (error), Deepest First Cut ≥ 8 (error). Depth Step of Two.</div>
     </div>
   </div>
+
+    <!-- Array Assist Modal -->
+  <div id="assistModal" class="modal" hidden>
+    <div class="backdrop" id="assistBackdrop"></div>
+    <div class="dialog">
+      <h3>Array Assist</h3>
+      <p class="muted" style="margin:6px 0 10px 0;">
+        Each <b>M</b> or <b>C</b> position yields 4 codes. We’ll size the designations to meet your requested counts.
+      </p>
+
+      <div class="row">
+        <div>
+          <label for="assistMk">Master Keys</label>
+          <input id="assistMk" type="number" inputmode="numeric" min="0" step="1" placeholder="e.g. 5">
+        </div>
+        <div>
+          <label for="assistCk">Change Keys</label>
+          <input id="assistCk" type="number" inputmode="numeric" min="0" step="1" placeholder="e.g. 30">
+        </div>
+      </div>
+
+      <div class="btnbar">
+        <button id="assistCancel">Cancel</button>
+        <button class="primary" id="assistDone">Done</button>
+      </div>
+    </div>
+  </div>
+
 
   <script>
     // ---------- Utility ----------
@@ -266,6 +317,59 @@
       $('#tmk').value = r;
       $('#array').value = '000MCC';
     };
+
+        // ---------- Array Assist (modal) ----------
+    function openAssist(){
+      const modal = document.getElementById('assistModal');
+      document.getElementById('assistMk').value = '';
+      document.getElementById('assistCk').value = '';
+      modal.hidden = false;
+    }
+    function closeAssist(){
+      document.getElementById('assistModal').hidden = true;
+    }
+    // ceil(log4(x)), treating x <= 1 as 0
+    function neededDesignations(x){
+      const n = Number(x);
+      if (!isFinite(n) || n <= 1) return 0;
+      return Math.ceil(Math.log(n) / Math.log(4));
+    }
+    function buildArrayFromRequest(tmkStr, mkReq, ckReq){
+      const N = tmkStr.length;
+      const m = neededDesignations(mkReq);
+      const c = neededDesignations(ckReq);
+      if (m + c > N) {
+        throw new Error(`Not enough chambers: need ${m+c}, have ${N}. Reduce requested counts.`);
+      }
+      // M...M C...C 0...0
+      return 'M'.repeat(m) + 'C'.repeat(c) + '0'.repeat(N - m - c);
+    }
+
+    // Open modal
+    document.getElementById('assist').onclick = openAssist;
+    // Close actions
+    document.getElementById('assistBackdrop').onclick = closeAssist;
+    document.getElementById('assistCancel').onclick = closeAssist;
+    // Done → compute and fill Array
+    document.getElementById('assistDone').onclick = ()=>{
+      const tmk = document.getElementById('tmk').value.trim();
+      if (!/^\d+$/.test(tmk) || tmk.length===0){
+        alert('Enter a valid TMK first (digits only).'); return;
+      }
+      const mkReq = document.getElementById('assistMk').value.trim();
+      const ckReq = document.getElementById('assistCk').value.trim();
+      if (mkReq==='' || ckReq===''){
+        alert('Please enter both Master Keys and Change Keys.'); return;
+      }
+      try{
+        const arr = buildArrayFromRequest(tmk, mkReq, ckReq);
+        document.getElementById('array').value = arr;
+        closeAssist();
+      }catch(err){
+        alert(err.message);
+      }
+    };
+
 
     $('#clear').onclick = ()=>{
       $('#tmk').value = '';
