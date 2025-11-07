@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>CodeGen</title>
 
-  <!-- Make it behave like a full-screen PWA -->
+  <!-- PWA -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#00ff90">
+  <link rel="apple-touch-icon" href="icon-192.png">
 
   <style>
     body {
@@ -28,9 +29,11 @@
 <body>
   workingzzz
 
-  <!-- Register service worker for offline + app-like install -->
+  <!-- IMPORTANT: relative path so SW scope becomes /CodeGen/ -->
   <script>
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(console.error);
+    }
   </script>
 </body>
 </html>
