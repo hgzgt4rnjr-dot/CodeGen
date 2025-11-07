@@ -380,16 +380,16 @@
       statsEl.textContent = '—';
     };
 
-    $('#build').onclick = ()=>{
+        $('#build').onclick = ()=>{
       const tmk = $('#tmk').value.trim();
-      const arr = $('#array').value.trim().replace(/\s+/g,'');
+      const arrRaw = $('#array').value.trim().replace(/\s+/g,'');
       const arrNorm = arrRaw.replace(/[oO]/g,'0').toUpperCase();
+
       if (!/^\d+$/.test(tmk) || tmk.length===0){ alert('Check TMK is Numbers Only.'); return; }
-      if (arr.length !== tmk.length){ alert('Array length must match TMK length.'); return; }
+      if (arrNorm.length !== tmk.length){ alert('Array length must match TMK length.'); return; }
       if (!/^[MC0]+$/.test(arrNorm)){ alert('Array must contain only M, C, or 0.'); return; }
 
-
-      const {lines, csvRows, mkCount, ckTotal, errorCount} = buildCodingTree(tmk, arr);
+      const {lines, csvRows, mkCount, ckTotal, errorCount} = buildCodingTree(tmk, arrNorm);
       printLines(lines);
       statsEl.textContent = `TMK ${tmk.length} Pin · MKs ${mkCount} · CK ${ckTotal} · Errors ${errorCount}`;
 
@@ -397,6 +397,7 @@
       window._lastCSV = toCSV(csvRows);
       window._lastText = lines.join('\n');
     };
+
 
     $('#copy').onclick = async ()=>{
       if (!window._lastText){ alert('Build first.'); return; }
