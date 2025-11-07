@@ -85,8 +85,8 @@
       <div class="btnbar">
         <button id="r5">🎲 R5</button>
         <button id="r6">🎲 R6</button>
-        <button id="assist">Array Assist</button>
         <button class="primary" id="build">Build Coding Tree</button>
+        <button id="assist">Array Assist</button>
         <button id="clear">Clear</button>
       </div>
     </div>
@@ -112,7 +112,7 @@
     <div class="dialog">
       <h3>Array Assist</h3>
       <p class="muted" style="margin:6px 0 10px 0;">
-        Each <b>M</b> or <b>C</b> position yields 4 codes. We’ll size the designations to meet your requested counts.
+        Enter the system's size below. We’ll design the arrary <b>M</b> and <b>C</b> to meet your requirements.
       </p>
 
       <div class="row">
@@ -208,6 +208,11 @@
       lines.push(`TMK   : ${tmkStr}`);
       lines.push(`Array : ${arrayStr}`);
       lines.push("");
+
+      // Add TMK/Array at the top of CSV (after header)
+      csvRows.push(["TMK", tmkStr, ""]);
+      csvRows.push(["Array", String(arrayStr).toUpperCase(), ""]);
+
 
       let mkCount=0, ckTotal=0, errorCount=0;
 
@@ -309,13 +314,10 @@
     $('#r5').onclick = ()=>{
       const r = generateRandomTMK(5);
       $('#tmk').value = r;
-      // make a default array guess same length, e.g., "MCMCC"
-      $('#array').value = '000MC'; // simple default
     };
     $('#r6').onclick = ()=>{
       const r = generateRandomTMK(6);
       $('#tmk').value = r;
-      $('#array').value = '000MCC';
     };
 
         // ---------- Array Assist (modal) ----------
@@ -342,7 +344,7 @@
         throw new Error(`Not enough chambers: need ${m+c}, have ${N}. Reduce requested counts.`);
       }
       // M...M C...C 0...0
-      return 'M'.repeat(m) + 'C'.repeat(c) + '0'.repeat(N - m - c);
+      return '0'.repeat(N - m - c) + 'M'.repeat(m) + 'C'.repeat(c);
     }
 
     // Open modal
@@ -381,9 +383,10 @@
     $('#build').onclick = ()=>{
       const tmk = $('#tmk').value.trim();
       const arr = $('#array').value.trim().replace(/\s+/g,'');
-      if (!/^\d+$/.test(tmk) || tmk.length===0){ alert('TMK must be digits only.'); return; }
+      const arrNorm = arrRaw.replace(/[oO]/g,'0').toUpperCase();
+      if (!/^\d+$/.test(tmk) || tmk.length===0){ alert('Check TMK is Numbers Only.'); return; }
       if (arr.length !== tmk.length){ alert('Array length must match TMK length.'); return; }
-      if (!/^[MCmc0]+$/.test(arr)){ alert('Array must contain only M, C, or 0.'); return; }
+      if (!/^[MC0]+$/.test(arrNorm)){ alert('Array must contain only M, C, or 0.'); return; }
 
 
       const {lines, csvRows, mkCount, ckTotal, errorCount} = buildCodingTree(tmk, arr);
