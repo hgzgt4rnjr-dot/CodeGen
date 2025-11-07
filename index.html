@@ -199,25 +199,42 @@
     const outEl = $('#out');
     const statsEl = $('#stats');
 
-    function printLines(lines){
-      // Color MK lines cyan and error parts red
-      // We'll join using \n, and inject spans for styling.
-      const html = lines.map(line=>{
-        if (line.startsWith('%cMK')) {
-          // MK line with style markers
-          const safe = line.replace(/%c/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-          const [head, ...rest] = safe.split('  ');
-          const err = rest.join('  ');
-          return `<span class="mk">${head}</span>${err?`  <span class="err">${err}</span>`:''}`;
-        } else if (line.includes("Error")) {
-          const esc = line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-          return esc.replace(/(Error.*)$/,'<span class="err">$1</span>');
-        } else {
-          return line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        }
-      }).join('\n');
-      outEl.innerHTML = html;
+
+      function printLines(lines){
+        const html = lines.map(line=>{
+            const hasErr = /(?:MAC|DFC)\s*Error/.test(line); // catches "MAC Error", "DFC Error", "MAC & DFC Error"
+
+            if (line.startsWith('%cMK')) {
+                // MK line with style markers
+                const safe = line
+                    .replace(/%c/g,'')
+                    .replace(/&/g,'&amp;')
+                    .replace(/</g,'&lt;')
+                    .replace(/>/g,'&gt;');
+
+                if (hasErr) {
+                    // Whole MK line red (label + code + error)
+                    return `<span class="err">${safe}</span>`;
+                } else {
+                    // MK label cyan, rest normal
+                    const [head, ...rest] = safe.split('  ');
+                    const tail = rest.join('  ');
+                    return `<span class="mk">${head}</span>${tail ? `  ${tail}` : ''}`;
+                }
+
+            } else {
+                // CK lines and any other lines
+                const esc = line
+                    .replace(/&/g,'&amp;')
+                    .replace(/</g,'&lt;')
+                    .replace(/>/g,'&gt;');
+                return hasErr ? `<span class="err">${esc}</span>` : esc;
+            }
+        }).join('\n');
+
+        outEl.innerHTML = html;
     }
+
 
     function toCSV(rows){
       return rows.map(r=>r.map(v=>{
