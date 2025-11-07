@@ -54,7 +54,7 @@
         </div>
         <div>
           <label for="array">Array (same length as TMK; use M/C/0 per position)</label>
-          <input id="array" type="text" placeholder="Example: MCMC C (no spaces) → e.g. MCMCC">
+          <input id="array" type="text" placeholder="Example: M00MC">
           <div class="hint">Each character: <b>M</b>=Master Key, <b>C</b>=Change Key, <b>0</b>=Empty. Length must equal TMK.</div>
         </div>
       </div>
@@ -247,12 +247,12 @@
       const r = generateRandomTMK(5);
       $('#tmk').value = r;
       // make a default array guess same length, e.g., "MCMCC"
-      $('#array').value = 'M'.padEnd(5,'C'); // simple default
+      $('#array').value = '000MC'; // simple default
     };
     $('#r6').onclick = ()=>{
       const r = generateRandomTMK(6);
       $('#tmk').value = r;
-      $('#array').value = 'M'.padEnd(6,'C');
+      $('#array').value = '000MCC';
     };
 
     $('#clear').onclick = ()=>{
