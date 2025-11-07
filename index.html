@@ -53,9 +53,9 @@
           <input id="tmk" type="text" inputmode="numeric" placeholder="Enter TMK like 53142">
         </div>
         <div>
-          <label for="array">Array (same length as TMK; use M/C per position)</label>
+          <label for="array">Array (same length as TMK; use M/C/0 per position)</label>
           <input id="array" type="text" placeholder="Example: MCMC C (no spaces) → e.g. MCMCC">
-          <div class="hint">Each character: <b>M</b>=mastered, <b>C</b>=change. Length must equal TMK.</div>
+          <div class="hint">Each character: <b>M</b>=Master Key, <b>C</b>=Change Key, <b>0</b>=Empty. Length must equal TMK.</div>
         </div>
       </div>
 
@@ -78,7 +78,7 @@
         <button id="download">Download CSV</button>
         <span class="hint">MKs in cyan, CKs in white, errors in red.</span>
       </div>
-      <div class="footer">Rules enforced: Maximum Adjacent Cut &gt; 7 (error), First Cut ≥ 8 (error). Even/odd progressions respected.</div>
+      <div class="footer">Rules enforced: Maximum Adjacent Cut &gt; 7 (error), Deepest First Cut ≥ 8 (error). Depth Step of Two.</div>
     </div>
   </div>
 
@@ -165,7 +165,7 @@
         const mkErrAdj = hasMaxAdjacentCutError(mkCuts);
         const mkErrDeep = hasDeepestFirstCutError(mkCuts);
         const mkErrMsg = (mkErrAdj && mkErrDeep) ? "MAC & DFC Error"
-                        : mkErrAdj ? "Max Adj Cut Error"
+                        : mkErrAdj ? "MAC Error"
                         : mkErrDeep ? "DFC Error" : "";
 
         const mkCode = mkCuts.join("");
@@ -182,7 +182,7 @@
           const ckAdj = mkErrAdj || hasMaxAdjacentCutError(ckCuts);
           const ckDeep = hasDeepestFirstCutError(ckCuts);
           const ckErrMsg = (ckAdj && ckDeep) ? "MAC & DFC Error"
-                         : ckAdj ? "Max Adj Cut Error"
+                         : ckAdj ? "MAC Error"
                          : ckDeep ? "DFC Error" : "";
 
           lines.push(`    ${ckLabel.padEnd(8)} - ${ckCode}${ckErrMsg?("  " + ckErrMsg):""}`);
