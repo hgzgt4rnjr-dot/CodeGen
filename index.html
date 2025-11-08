@@ -71,6 +71,14 @@
       width:100%; background:#0a0a0a; border:1px solid #1e1e1e; color:var(--fg);
       border-radius:12px; padding:10px 12px; font-size:16px; outline:none
     }
+        /* Segmented buttons for pin size */
+    .seg button.selected{
+      background: var(--accent);
+      color: #002a16;
+      border-color: #00c070;
+      font-weight: 600;
+    }
+
 
   </style>
 </head>
@@ -95,7 +103,7 @@
         <button id="r5">🎲 R5</button>
         <button id="r6">🎲 R6</button>
         <button class="primary" id="build">Build Coding Tree</button>
-        <button id="assist">Array Assist</button>
+        <button id="assist">Coding Assist</button>
         <button id="clear">Clear</button>
       </div>
     </div>
@@ -121,9 +129,14 @@
     <div class="dialog">
       <h3>Array Assist</h3>
       <p class="muted" style="margin:6px 0 10px 0;">
-        Enter the system's size below. We’ll design the arrary <b>M</b> and <b>C</b> to meet your requirements.
+        Enter the system's size below. We’ll build the system to meet your requirements.
       </p>
 
+      <div class="btnbar seg" style="margin-top:6px; justify-content:flex-start;">
+        <button id="assistPin5">5 Pin</button>
+        <button id="assistPin6">6 Pin</button>
+      </div>
+      
       <div class="row">
         <div>
           <label for="assistMk">Master Keys</label>
@@ -342,8 +355,13 @@
       const modal = document.getElementById('assistModal');
       document.getElementById('assistMk').value = '';
       document.getElementById('assistCk').value = '';
+      // reset pin selection
+      window._assistPins = null;
+      document.getElementById('assistPin5').classList.remove('selected');
+      document.getElementById('assistPin6').classList.remove('selected');
       modal.hidden = false;
     }
+
     function closeAssist(){
       document.getElementById('assistModal').hidden = true;
     }
@@ -369,11 +387,23 @@
     // Close actions
     document.getElementById('assistBackdrop').onclick = closeAssist;
     document.getElementById('assistCancel').onclick = closeAssist;
-    // Done → compute and fill Array
+
+        // Pin size selection buttons
+    document.getElementById('assistPin5').onclick = ()=>{
+      window._assistPins = 5;
+      document.getElementById('assistPin5').classList.add('selected');
+      document.getElementById('assistPin6').classList.remove('selected');
+    };
+    document.getElementById('assistPin6').onclick = ()=>{
+      window._assistPins = 6;
+      document.getElementById('assistPin6').classList.add('selected');
+      document.getElementById('assistPin5').classList.remove('selected');
+    };
+
+        // Done → choose pin size, generate TMK, compute Array, auto-build
     document.getElementById('assistDone').onclick = ()=>{
-      const tmk = document.getElementById('tmk').value.trim();
-      if (!/^\d+$/.test(tmk) || tmk.length===0){
-        alert('Enter a valid TMK first (digits only).'); return;
+      if (!window._assistPins){
+        alert('Please select 5 Pin or 6 Pin.'); return;
       }
       const mkReq = document.getElementById('assistMk').value.trim();
       const ckReq = document.getElementById('assistCk').value.trim();
@@ -381,13 +411,22 @@
         alert('Please enter both Master Keys and Change Keys.'); return;
       }
       try{
+        // 1) Generate TMK for the chosen pin size
+        const tmk = generateRandomTMK(window._assistPins);
+        document.getElementById('tmk').value = tmk;
+
+        // 2) Build Array and set it
         const arr = buildArrayFromRequest(tmk, mkReq, ckReq);
         document.getElementById('array').value = arr;
+
+        // 3) Close modal and trigger Build
         closeAssist();
+        document.getElementById('build').click();
       }catch(err){
         alert(err.message);
       }
     };
+
 
 
     $('#clear').onclick = ()=>{
