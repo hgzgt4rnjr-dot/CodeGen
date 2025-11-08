@@ -281,6 +281,8 @@
     // ---------- UI wiring ----------
     const outEl = $('#out');
     const statsEl = $('#stats');
+    const buildBtn = document.getElementById('build');
+
 
 
       function printLines(lines){
@@ -437,22 +439,47 @@
     };
 
         $('#build').onclick = ()=>{
-      const tmk = $('#tmk').value.trim();
-      const arrRaw = $('#array').value.trim().replace(/\s+/g,'');
-      const arrNorm = arrRaw.replace(/[oO]/g,'0').toUpperCase();
+      outEl.innerHTML = '';
+      statsEl.textContent = '—';
+      window._lastCSV = undefined;
+      window._lastText = undefined;
 
-      if (!/^\d+$/.test(tmk) || tmk.length===0){ alert('Check TMK is Numbers Only.'); return; }
-      if (arrNorm.length !== tmk.length){ alert('Array length must match TMK length.'); return; }
-      if (!/^[MC0]+$/.test(arrNorm)){ alert('Array must contain only M, C, or 0.'); return; }
+      // 2) Disable the button during render (prevents rapid double-renders)
+      buildBtn.disabled = true;
 
-      const {lines, csvRows, mkCount, ckTotal, errorCount} = buildCodingTree(tmk, arrNorm);
-      printLines(lines);
-      statsEl.textContent = `TMK ${tmk.length} Pin · MKs ${mkCount} · CK ${ckTotal} · Errors ${errorCount}`;
+      // 3) Force a reflow so the clear actually paints before we add new content
+      void outEl.offsetHeight;
 
-      // stash for copy/download
-      window._lastCSV = toCSV(csvRows);
-      window._lastText = lines.join('\n');
+      try {
+        const tmk = document.getElementById('tmk').value.trim();
+        const arrRaw = document.getElementById('array').value.trim().replace(/\s+/g,'');
+        const arrNorm = arrRaw.replace(/[oO]/g,'0').toUpperCase();
+
+        if (!/^\d+$/.test(tmk) || tmk.length===0){ alert('Check TMK is Numbers Only.'); return; }
+        if (arrNorm.length !== tmk.length){ alert('Array length must match TMK length.'); return; }
+        if (!/^[MC0]+$/.test(arrNorm)){ alert('Array must contain only M, C, or 0.'); return; }
+
+        const {lines, csvRows, mkCount, ckTotal, errorCount} = buildCodingTree(tmk, arrNorm);
+
+        // Optional: give WebKit one more micro-turn so it doesn’t coalesce paints
+        requestAnimationFrame(() => {
+          printLines(lines);
+          statsEl.textContent = `TMK ${tmk.length} Pin · MKs ${mkCount} · CK ${ckTotal} · Errors ${errorCount}`;
+
+          // stash for copy/download
+          window._lastCSV = toCSV(csvRows);
+          window._lastText = lines.join('\n');
+
+          // Re-enable button
+          buildBtn.disabled = false;
+        });
+      } catch (e) {
+        // Re-enable on any thrown error
+        buildBtn.disabled = false;
+        throw e;
+      }
     };
+
 
 
     $('#copy').onclick = async ()=>{
