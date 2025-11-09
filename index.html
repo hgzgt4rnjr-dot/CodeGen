@@ -231,17 +231,11 @@
       lines.push(`Array : ${arrayStr}`);
       lines.push("");
 
-      // GMK appears only if Array contains an M; GMK equals TMK code
-      if (/[Mm]/.test(arrayStr)) {
-        lines.push(`GMK - ${tmkStr}`);
-        lines.push("");
-      }
-
-
       // Add TMK/Array at the top of CSV (after header)
       csvRows.push(["TMK", tmkStr, ""]);
       csvRows.push(["Array", String(arrayStr).toUpperCase(), ""]);
 
+      // GMK appears only if Array contains an M; GMK equals TMK code
       if (/[Mm]/.test(arrayStr)) {
         lines.push(`GMK - ${tmkStr}`);
         lines.push("");
@@ -249,7 +243,25 @@
       }
 
 
+
       let mkCount=0, ckTotal=0, errorCount=0;
+      if (masterPos.length === 0 && changePos.length === 0) {
+        const ckAdj = hasMaxAdjacentCutError(tmk);
+        const ckDeep = hasDeepestFirstCutError(tmk);
+        const ckErrMsg = (ckAdj && ckDeep) ? "MAC & DFC Error"
+                       : ckAdj ? "MAC Error"
+                       : ckDeep ? "DFC Error" : "";
+        if (ckErrMsg) errorCount++;
+        ckTotal = 1;
+
+        // Match your CK line format (four leading spaces, pad label to 8)
+        const ckLabel = 'CK1.1';
+        lines.push(`    ${ckLabel.padEnd(8)} - ${tmkStr}${ckErrMsg?("  " + ckErrMsg):""}`);
+        csvRows.push([ckLabel, tmkStr, ckErrMsg]);
+        lines.push("");
+
+        return { lines, csvRows, mkCount, ckTotal, errorCount };
+      }
 
       masterKeys.forEach((mkCuts, i)=>{
         mkCount++;
