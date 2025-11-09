@@ -242,6 +242,12 @@
       csvRows.push(["TMK", tmkStr, ""]);
       csvRows.push(["Array", String(arrayStr).toUpperCase(), ""]);
 
+      if (/[Mm]/.test(arrayStr)) {
+        lines.push(`GMK - ${tmkStr}`);
+        lines.push("");
+        csvRows.push(["GMK", tmkStr, ""]);
+      }
+
 
       let mkCount=0, ckTotal=0, errorCount=0;
 
@@ -390,7 +396,11 @@
     function buildArrayFromRequest(tmkStr, mkReq, ckReq){
       const N = tmkStr.length;
       const m = neededDesignations(mkReq);
-      const c = neededDesignations(ckReq);
+            // Change Keys tweak: if user requests exactly 1 CK, force one 'C'
+      let c = neededDesignations(ckReq);
+      const ckNum = Number(ckReq);
+      if (Number.isFinite(ckNum) && ckNum === 1) c = 1;
+      
       if (m + c > N) {
         throw new Error(`Not enough chambers: need ${m+c}, have ${N}. Reduce requested counts.`);
       }
