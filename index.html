@@ -451,9 +451,16 @@
       if (arrNorm.length !== tmk.length){ alert('Array length must match TMK length.'); return; }
       if (!/^[MC0]+$/.test(arrNorm)){ alert('Array must contain only M, C, or 0.'); return; }
 
+            // Clear the output window before every rebuild
+      outEl.innerHTML = '';
+      outEl.textContent = ''; // ensures all old nodes are removed
+
       const {lines, csvRows, mkCount, ckTotal, errorCount} = buildCodingTree(tmk, arrNorm);
       printLines(lines);
       statsEl.textContent = `TMK ${tmk.length} Pin · MKs ${mkCount} · CK ${ckTotal} · Errors ${errorCount}`;
+
+
+    
 
       // stash for copy/download
       window._lastCSV = toCSV(csvRows);
