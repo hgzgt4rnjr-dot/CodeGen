@@ -231,6 +231,13 @@
       lines.push(`Array : ${arrayStr}`);
       lines.push("");
 
+      // GMK appears only if Array contains an M; GMK equals TMK code
+      if (/[Mm]/.test(arrayStr)) {
+        lines.push(`GMK - ${tmkStr}`);
+        lines.push("");
+      }
+
+
       // Add TMK/Array at the top of CSV (after header)
       csvRows.push(["TMK", tmkStr, ""]);
       csvRows.push(["Array", String(arrayStr).toUpperCase(), ""]);
@@ -305,12 +312,21 @@
                     return `<span class="mk">${head}</span>${tail ? `  ${tail}` : ''}`;
                 }
 
-            } else if (line.startsWith('TMK   :')) {
+
+            } else if (line.startsWith('GMK -')) {
                 const esc = line
                     .replace(/&/g,'&amp;')
                     .replace(/</g,'&lt;')
                     .replace(/>/g,'&gt;');
                 return `<span class="tmk">${esc}</span>`;
+
+            } else if (line.startsWith('TMK   :')) {
+                const esc = line
+                    .replace(/&/g,'&amp;')
+                    .replace(/</g,'&lt;')
+                    .replace(/>/g,'&gt;');
+                return esc;
+
 
             } else {
                 // CK lines and any other lines
@@ -453,6 +469,12 @@
       if (!/^\d+$/.test(tmk) || tmk.length===0){ alert('Check TMK is Numbers Only.'); return; }
       if (arrNorm.length !== tmk.length){ alert('Array length must match TMK length.'); return; }
       if (!/^[MC0]+$/.test(arrNorm)){ alert('Array must contain only M, C, or 0.'); return; }
+                // Rule: M cannot exist without at least one C
+      if (arrNorm.includes('M') && !arrNorm.includes('C')) {
+        alert('Array Incorrect. Master Keys can only be created if they have Change Keys underneath. Please add C into the Array to continue.');
+        return;
+      }
+
 
       const {lines, csvRows, mkCount, ckTotal, errorCount} = buildCodingTree(tmk, arrNorm);
       printLines(lines);
