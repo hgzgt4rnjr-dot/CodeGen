@@ -375,7 +375,7 @@
 
       function printLines(lines){
         const html = lines.map(line=>{
-            const hasErr = /(?:MAC|DFC|MVR)\s*Error/.test(line); // catches Errors
+            const hasErr = /(?:MAC|DFC|MCV)\s*Error/.test(line); // catches Errors
 
 
             if (line.startsWith('%cMK')) {
