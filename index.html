@@ -579,8 +579,8 @@
       // Choose pin length for trials using current TMK length (5 or 6)
       const N = tmk.length;
 
-      // Run 10 trials
-      const trials = 10;
+      // Run trial in reduce errors
+      const trials = 50;
       const candidates = [before];
       for (let i=0;i<trials;i++){
         const candTMK = generateRandomTMK(N);
