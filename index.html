@@ -588,14 +588,13 @@
         candidates.push(cand);
       }
 
-      // Pick the best: lowest errors; tie-breaker: highest variation score
-      candidates.sort((a,b)=>{
-        if (a.errors !== b.errors) return a.errors - b.errors;
-        return b.varScore - a.varScore;
-      });
+      // Pick the best: lowest errors; tie-breaker: RANDOM among equals
+      const minErr = Math.min(...candidates.map(c => c.errors));
+      const pool = candidates.filter(c => c.errors === minErr);
+      const best = pool[Math.floor(Math.random() * pool.length)];
 
-      const best = candidates[0];
       window._reduceBest = best; // stash for Accept
+
 
       // Build summary text
       const pad = (s,w)=>String(s).padEnd(w,' ');
