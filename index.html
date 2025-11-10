@@ -333,10 +333,6 @@
       return { lines, csvRows, mkCount, ckTotal, errorCount };
     }
 
-          // final summary
-      return { lines, csvRows, mkCount, ckTotal, errorCount };
-    }
-
     // --- Reduce Errors helpers (global) ---
     function variationScoreFromTMK(tmkStr){
       // Higher variation between adjacent cuts preferred
@@ -354,10 +350,6 @@
         varScore: variationScoreFromTMK(tmkStr)
       };
     }
-
-    // Everything below here is UI logic, buttons, etc
-    const outEl = document.getElementById('out');
-    const statsEl = document.getElementById('stats');
 
 
     // ---------- UI wiring ----------
