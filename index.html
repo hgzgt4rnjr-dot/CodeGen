@@ -120,7 +120,7 @@
         <button id="download">Download CSV</button>
         <span class="hint">MKs in cyan, CKs in white, errors in red.</span>
       </div>
-      <div class="footer">Rules enforced: Maximum Adjacent Cut &gt; 7 (error), Deepest First Cut ≥ 8 (error) and Minimum Code Variation of 3. Depth Step of Two.</div>
+      <div class="footer">Rules enforced: Maximum Adjacent Cut &gt; 7 (MAC), Deepest First Cut ≥ 8 (DFC) and Minimum Code Variation ≥ 3 (MCV). Depth Step of Two.</div>
     </div>
   </div>
 
@@ -292,7 +292,7 @@
         const ckAdj  = hasMaxAdjacentCutError(tmk);
         const ckDeep = hasDeepestFirstCutError(tmk);
         const ckMvr  = hasMinVariationError(tmk);
-        const ckErrMsg = [ ckAdj && "MAC Error", ckDeep && "DFC Error", ckMvr && "MVR Error" ]
+        const ckErrMsg = [ ckAdj && "MAC Error", ckDeep && "DFC Error", ckMvr && "MCV Error" ]
                            .filter(Boolean).join(" & ");
         if (ckErrMsg) errorCount++;
         ckTotal = 1;
@@ -313,7 +313,7 @@
         const mkErrAdj  = hasMaxAdjacentCutError(mkCuts);
         const mkErrDeep = hasDeepestFirstCutError(mkCuts);
         const mkErrMvr  = hasMinVariationError(mkCuts);
-        const mkErrMsg = [ mkErrAdj && "MAC Error", mkErrDeep && "DFC Error", mkErrMvr && "MVR Error" ]
+        const mkErrMsg = [ mkErrAdj && "MAC Error", mkErrDeep && "DFC Error", mkErrMvr && "MCV Error" ]
                            .filter(Boolean).join(" & ");
 
         if (mkErrMsg) errorCount++;
@@ -333,7 +333,7 @@
           const ckAdj  = mkErrAdj || hasMaxAdjacentCutError(ckCuts);
           const ckDeep = hasDeepestFirstCutError(ckCuts);
           const ckMvr  = hasMinVariationError(ckCuts);
-          const ckErrMsg = [ ckAdj && "MAC Error", ckDeep && "DFC Error", ckMvr && "MVR Error" ]
+          const ckErrMsg = [ ckAdj && "MAC Error", ckDeep && "DFC Error", ckMvr && "MCV Error" ]
                              .filter(Boolean).join(" & ");
 
           if (ckErrMsg) errorCount++;
