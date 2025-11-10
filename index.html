@@ -105,7 +105,6 @@
         <button class="primary" id="build">Build Coding Tree</button>
         <button id="assist">Coding Assist</button>
         <button id="clear">Clear</button>
-        <button id="reduce">Reduce Errors</button>
       </div>
     </div>
 
@@ -155,35 +154,6 @@
       </div>
     </div>
   </div>
-
-    <!-- Reduce Errors – Confirm -->
-  <div id="reduceConfirm" class="modal" hidden>
-    <div class="backdrop" id="reduceConfirmBackdrop"></div>
-    <div class="dialog">
-      <h3>Reduce Errors</h3>
-      <p class="muted" style="margin:6px 0 12px 0;">
-        <strong>Please Note:</strong> This will change the current TMK. Press <b>Start</b> to continue.
-      </p>
-      <div class="btnbar" style="justify-content:flex-end">
-        <button id="reduceCancel">Cancel</button>
-        <button class="primary" id="reduceStart">Start</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Reduce Errors – Result -->
-  <div id="reduceResult" class="modal" hidden>
-    <div class="backdrop" id="reduceResultBackdrop"></div>
-    <div class="dialog">
-      <h3>Processing Complete</h3>
-      <pre id="reduceSummary" style="background:#060606;border:1px solid #101010;border-radius:12px;padding:10px;white-space:pre-wrap;margin:8px 0 12px 0;"></pre>
-      <div class="btnbar" style="justify-content:flex-end">
-        <button id="reduceResultCancel">Cancel</button>
-        <button class="primary" id="reduceAccept">Accept</button>
-      </div>
-    </div>
-  </div>
-
 
 
   <script>
@@ -252,25 +222,6 @@
         })(base.slice(), 0);
         return res;
       }
-
-           // --- Reduce Errors helpers ---
-    function variationScoreFromTMK(tmkStr){
-      // Higher variation between adjacent cuts preferred
-      const d = tmkStr.split('').map(n=>+n);
-      let s = 0;
-      for (let i=0;i<d.length-1;i++) s += Math.abs(d[i]-d[i+1]);
-      return s;
-    }
-
-    function evaluateTMK(tmkStr, arrayStr){
-      const { errorCount } = buildCodingTree(tmkStr, arrayStr);
-      return {
-        tmk: tmkStr,
-        errors: errorCount,
-        varScore: variationScoreFromTMK(tmkStr)
-      };
-    }
-
 
       // Assemble printable lines and CSV rows
       const lines=[];
@@ -513,105 +464,6 @@
         alert(err.message);
       }
     };
-
-        // --- Reduce Errors flow ---
-    const reduceConfirm = document.getElementById('reduceConfirm');
-    const reduceResult = document.getElementById('reduceResult');
-    const reduceSummary = document.getElementById('reduceSummary');
-
-    function openReduceConfirm(){ reduceConfirm.hidden = false; }
-    function closeReduceConfirm(){ reduceConfirm.hidden = true; }
-    function openReduceResult(){ reduceResult.hidden = false; }
-    function closeReduceResult(){ reduceResult.hidden = true; }
-
-    // Open the confirm dialog
-    document.getElementById('reduce').onclick = openReduceConfirm;
-    document.getElementById('reduceConfirmBackdrop').onclick = closeReduceConfirm;
-    document.getElementById('reduceCancel').onclick = closeReduceConfirm;
-
-    // Close the result dialog by backdrop
-    document.getElementById('reduceResultBackdrop').onclick = closeReduceResult;
-    document.getElementById('reduceResultCancel').onclick = ()=>{
-      // User chose Cancel on result => rebuild from original TMK
-      if (window._reduceOrigTMK && window._reduceOrigArr) {
-        document.getElementById('tmk').value = window._reduceOrigTMK;
-        document.getElementById('array').value = window._reduceOrigArr;
-        document.getElementById('build').click();
-      }
-      closeReduceResult();
-    };
-
-    document.getElementById('reduceAccept').onclick = ()=>{
-      // Accept best TMK => set it and build
-      if (window._reduceBest && window._reduceBest.tmk) {
-        document.getElementById('tmk').value = window._reduceBest.tmk;
-        document.getElementById('build').click();
-      }
-      closeReduceResult();
-    };
-
-    // Start the 10-trial search
-    document.getElementById('reduceStart').onclick = ()=>{
-      // Close confirm
-      closeReduceConfirm();
-
-      // Gather + validate current inputs
-      const tmk = $('#tmk').value.trim();
-      const arrRaw = $('#array').value.trim().replace(/\s+/g,'');
-      const arrNorm = arrRaw.replace(/[oO]/g,'0').toUpperCase();
-
-      if (!/^\d+$/.test(tmk) || tmk.length===0){ alert('Check TMK is Numbers Only.'); return; }
-      if (arrNorm.length !== tmk.length){ alert('Array length must match TMK length.'); return; }
-      if (!/^[MC0]+$/.test(arrNorm)){ alert('Array must contain only M, C, or 0.'); return; }
-      if (arrNorm.includes('M') && !arrNorm.includes('C')) {
-        alert('Array Incorrect. Master Keys can only be created if they have Change Keys underneath. Please add C into the Array to continue.');
-        return;
-      }
-
-      // Remember the current state in case it is already optimal or user Cancels after preview
-      window._reduceOrigTMK = tmk;
-      window._reduceOrigArr = arrNorm;
-
-      // Evaluate the current TMK ("before")
-      const before = evaluateTMK(tmk, arrNorm);
-
-      // Choose pin length for trials (use current TMK length)
-      const N = tmk.length; // 5 or 6 expected
-
-      // Run 10 trials
-      const trials = 10;
-      const candidates = [before];
-      for (let i=0;i<trials;i++){
-        const candTMK = generateRandomTMK(N);
-        const cand = evaluateTMK(candTMK, arrNorm);
-        candidates.push(cand);
-      }
-
-      // Pick the best: lowest errors; tie-breaker: highest variation score
-      candidates.sort((a,b)=>{
-        if (a.errors !== b.errors) return a.errors - b.errors;
-        return b.varScore - a.varScore;
-      });
-
-      const best = candidates[0];
-      window._reduceBest = best; // stash for Accept
-
-      // Build summary text
-      const pad = (s,w)=>String(s).padEnd(w,' ');
-      const beforeLine1 = `TMK: ${before.tmk}`;
-      const afterLine1  = `TMK: ${best.tmk}`;
-      const beforeLine2 = `Errors: ${before.errors}`;
-      const afterLine2  = `Errors: ${best.errors}`;
-
-      reduceSummary.textContent =
-`Before                 After:
-${pad(beforeLine1,22)}${afterLine1}
-${pad(beforeLine2,22)}${afterLine2}`;
-
-      // Show result modal with Cancel/Accept
-      openReduceResult();
-    };
-
 
 
 
