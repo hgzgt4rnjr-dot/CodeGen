@@ -1499,7 +1499,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         );
       }).join('');
 
-      let selectedIdx = -1;
+      let selectedIdx = (_keysSelectedIdx >= 0 && _keysSelectedIdx < rows.length) ? _keysSelectedIdx : -1;
       const rowEls = Array.from(rowsHost.querySelectorAll('.keyrow'));
       const btnEdit = document.getElementById('keyEdit');
       const btnCut  = document.getElementById('keyCut');
@@ -1509,6 +1509,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         rowEls.forEach(r => r.classList.remove('selected'));
         el.classList.add('selected');
         selectedIdx = parseInt(el.getAttribute('data-idx'), 10);
+        _keysSelectedIdx = selectedIdx;   // persist selection
         btnEdit.disabled = false;
         btnCut.disabled  = false;
         btnDel.disabled  = false;
@@ -1517,6 +1518,12 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       rowEls.forEach(el=>{
         el.onclick = ()=>selectRow(el);
       });
+
+      // re-apply previous selection after render
+      if (selectedIdx >= 0 && rowEls[selectedIdx]) {
+        selectRow(rowEls[selectedIdx]);
+      }
+
 
       document.getElementById('keyAdd').onclick = ()=>{
         _editingKeyIndex = null;
@@ -1605,6 +1612,12 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
     // ---- Doors view (grid + CRUD + Keying) ----
     let _editingDoorIndex = null;
+    let _doorsSelectedIdx = -1;  // remember which door is selected across re-renders
+
+    // ---- Keys view selection memory ----
+    let _keysSelectedIdx = -1;   // remember which key is selected across re-renders
+
+
 
     function ensureDoorsArray(){
       if (!_currentSystem.doors) _currentSystem.doors = [];
@@ -1637,14 +1650,22 @@ ${pad(beforeLine2,22)}${afterLine2}`;
                       : []
       };
       if (_editingDoorIndex == null){
-        _currentSystem.doors.push(obj);
+        // insert after currently selected door; if none, append
+        const insertAt = (_doorsSelectedIdx >= 0 && _doorsSelectedIdx < _currentSystem.doors.length)
+          ? (_doorsSelectedIdx + 1)
+          : _currentSystem.doors.length;
+        _currentSystem.doors.splice(insertAt, 0, obj);
+        _doorsSelectedIdx = insertAt;   // keep the new door selected
       } else {
         _currentSystem.doors[_editingDoorIndex] = obj;
+        _doorsSelectedIdx = _editingDoorIndex;  // keep edited door selected
       }
       persistCurrentSystem();
       closeDoorModal();
       renderDoorsView();
     };
+
+
 
     function openDoorKeyingModal(doorIdx){
       const modal = document.getElementById('doorKeyingModal');
@@ -1868,7 +1889,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         );
       }).join('');
 
-      let selectedIdx = -1;
+      let selectedIdx = (_doorsSelectedIdx >= 0 && _doorsSelectedIdx < rows.length) ? _doorsSelectedIdx : -1;
       const rowEls = Array.from(host.querySelectorAll('.doorrow'));
       const btnEdit    = document.getElementById('doorEdit');
       const btnKeying  = document.getElementById('doorKeying');
@@ -1880,6 +1901,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         rowEls.forEach(r => r.classList.remove('selected'));
         el.classList.add('selected');
         selectedIdx = parseInt(el.getAttribute('data-idx'), 10);
+        _doorsSelectedIdx = selectedIdx;  // persist selection
         btnEdit.disabled    = false;
         btnKeying.disabled  = false;
         btnPinning.disabled = false;
@@ -1887,6 +1909,12 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       }
 
       rowEls.forEach(el=>{ el.onclick = ()=>selectRow(el); });
+
+      // if we had a selection before re-render, re-apply it now
+      if (selectedIdx >= 0 && rowEls[selectedIdx]) {
+        selectRow(rowEls[selectedIdx]);
+      }
+
 
       document.getElementById('doorAdd').onclick = ()=>{
         _editingDoorIndex = null;
@@ -1953,14 +1981,21 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const obj = { stamping, description: desc, code, qty: (_editingKeyIndex!=null && _currentSystem.keys[_editingKeyIndex]) ? (_currentSystem.keys[_editingKeyIndex].qty||0) : 0 };
 
       if (_editingKeyIndex == null){
-        _currentSystem.keys.push(obj);
+        // insert after currently selected key; if none, append
+        const insertAt = (_keysSelectedIdx >= 0 && _keysSelectedIdx < _currentSystem.keys.length)
+          ? (_keysSelectedIdx + 1)
+          : _currentSystem.keys.length;
+        _currentSystem.keys.splice(insertAt, 0, obj);
+        _keysSelectedIdx = insertAt;   // keep the new key selected
       } else {
         _currentSystem.keys[_editingKeyIndex] = obj;
+        _keysSelectedIdx = _editingKeyIndex;  // keep edited key selected
       }
       persistCurrentSystem();
       closeKeyModal();
       renderKeysView();
     };
+
 
     // --- Assign Code Modal ---
     function openAssignModal(){
