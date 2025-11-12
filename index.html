@@ -86,8 +86,23 @@
       gap:8px;
       align-items:center;
     }
-    .keygrid .hdr {
-      font-weight:600;
+    .keygrid .hdr { font-weight:600; }
+
+    /* Adjust header alignments in Keys grid */
+    /* Description → slightly right */
+    .keygrid .hdr:nth-child(2) {
+      margin-left:5px;    /* adjust between 4–10px */
+    }
+
+    /* Code → slightly left */
+    .keygrid .hdr:nth-child(3) {
+      margin-left:-6px;   /* adjust between -4px and -10px */
+    }
+
+    /* Qty → slightly right */
+    .keygrid .hdr:nth-child(4) {
+      margin-left:6px;    /* adjust between 4–10px */
+
     }
     .keyrow {
       display:grid;
@@ -128,6 +143,18 @@
       align-items:center;
     }
     .doorgrid .hdr { font-weight:600; }
+
+    /* shift the "Part Number" header text slightly left (without moving column) */
+    .doorgrid .hdr:nth-child(3) {
+      margin-left:-8px;   /* tweak this number (e.g. -6px to -12px) for perfect alignment */
+    }
+
+    /* shift the "Description" header slightly right (without moving column) */
+    .doorgrid .hdr:nth-child(2) {
+      margin-left:4px;   /* adjust between 4–10px until it lines up visually */
+    }
+
+
     .doorrow {
       display:grid;
       grid-template-columns: 1.2fr 1.8fr 1.2fr;
@@ -143,11 +170,27 @@
     .doorrow.selected { border-color: var(--accent); background:#0b0b0b; }
     
     /* Active tab highlight */
-    .tabbtn.active{
+    .tabbtn.active {
       color: var(--accent);
       border-color: var(--accent);
       background:#0b0b0b;
     }
+
+    /* Coding Tree sub-tabs reuse tabbtn look */
+    .subtabbtn {
+      padding:6px 10px;
+      border:1px solid #1e1e1e;
+      border-radius:10px;
+      background:#0a0a0a;
+      color:var(--fg);
+      cursor:pointer;
+    }
+    .subtabbtn.active {
+      color: var(--accent);
+      border-color: var(--accent);
+      background:#0b0b0b;
+    }
+
     
         /* Pinning chart grid */
     .pinGrid {
@@ -434,6 +477,7 @@
            style="max-height:50vh; overflow:auto; margin-top:8px;"></div>
       <div class="btnbar" style="justify-content:flex-end">
         <button id="assignCancel">Cancel</button>
+        <button id="assignToggleErr">Show Errors</button>
         <button class="primary" id="assignOk">Assign</button>
       </div>
     </div>
@@ -505,7 +549,7 @@
       <div class="row" style="margin-top:10px;">
         <div>
           <label for="doorPart">Part Number</label>
-          <input id="doorPart" type="text" placeholder="e.g. 530/70 SS">
+          <input id="doorPart" type="text" placeholder="e.g. 570/201">
         </div>
         <div>
           <label for="doorNotes">Notes</label>
@@ -1219,8 +1263,20 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       loadScreen.style.display    = 'none';
       managerScreen.style.display = 'none';
       systemScreen.style.display  = 'block';
+
+      // default view = Notes (and highlight the Notes tab)
+      const content = document.getElementById('systemContent');
+      if (content && typeof renderNotesView === 'function') {
+        renderNotesView();
+      }
+      const tabs = document.querySelectorAll('.tabbtn');
+      tabs.forEach(b => b && b.classList.remove('active'));
+      const notesBtn = document.getElementById('btnSysNotes');
+      if (notesBtn) notesBtn.classList.add('active');
+
       window.scrollTo(0,0);
     }
+
 
 
 
@@ -1269,12 +1325,23 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
       if (btnKeys)  btnKeys.onclick  = ()=>{ renderKeysView();  setActiveTab('keys');  };
       if (btnDoors) btnDoors.onclick = ()=>{ renderDoorsView(); setActiveTab('doors'); };
-      if (btnTree)  btnTree.onclick  = ()=>{
-        if (!_currentSystem || !content) return;
-        const html = codingLinesToHTML((_currentSystem && _currentSystem.lines) || []);
-        content.innerHTML = `<div class="out">${html}</div>`;
-        setActiveTab('tree');
-      };
+  if (btnTree)  btnTree.onclick  = ()=>{
+    if (!_currentSystem || !content) return;
+
+    // sub-tab bar + container
+    content.innerHTML = `
+      <div class="btnbar" style="gap:8px; margin-bottom:10px;">
+        <button id="ctCodingOnly" class="subtabbtn">Coding Only</button>
+        <button id="ctShowKeys"   class="subtabbtn">Show Keys</button>
+      </div>
+      <div id="codingTreeHost" class="out"></div>
+    `;
+
+    // default = Show Keys
+    renderCodingTreeUI("keys");
+    setActiveTab("tree");
+  };
+
       if (btnNotes) btnNotes.onclick = ()=>{ renderNotesView(); setActiveTab('notes'); };
     })();
 
@@ -1314,6 +1381,65 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       });
     }
     
+  // ---- Coding Tree sub-tabs renderer ----
+  // ---- Coding Tree sub-tabs renderer ----
+  function renderCodingTreeUI(mode){
+    const host = document.getElementById("codingTreeHost");
+    if (!host || !_currentSystem) return;
+
+    // highlight active toggle
+    const tabs = [document.getElementById("ctCodingOnly"), document.getElementById("ctShowKeys")];
+    tabs.forEach(b => b && b.classList.remove("active"));
+    if (mode === "coding") document.getElementById("ctCodingOnly")?.classList.add("active");
+    else document.getElementById("ctShowKeys")?.classList.add("active");
+
+    // re-bind buttons
+    document.getElementById("ctCodingOnly").onclick = ()=>renderCodingTreeUI("coding");
+    document.getElementById("ctShowKeys").onclick   = ()=>renderCodingTreeUI("keys");
+
+    const lines = _currentSystem?.lines ? _currentSystem.lines.slice() : [];
+    if (mode === "coding"){
+      // normal rendering, unchanged
+      host.innerHTML = `<div>${codingLinesToHTML(lines)}</div>`;
+      return;
+    }
+
+    // --- Show Keys mode ---
+    const keyMap = {};
+    (_currentSystem.keys||[]).forEach(k=>{
+      const c = String(k.code||"").trim();
+      const s = String(k.stamping||"").trim();
+      if(!c||!s) return;
+      if(!keyMap[c]) keyMap[c] = [];
+      keyMap[c].push(s);
+    });
+
+    // build from the SAME base HTML that Coding Only uses
+    const htmlRaw = (typeof codingLinesToHTML === "function")
+      ? codingLinesToHTML(lines)
+      : lines.join("\n");
+
+    // swap only the error message text for key stampings
+    const html = htmlRaw
+      .replace(/\b(MAC|DFC|MCV)\s*Error\b/g, "")
+      .replace(/(CK\d+\.\d+\s*-\s*\d+)/g, (m)=>{
+        const codeMatch = m.match(/(\d{3,})$/);
+        if (!codeMatch) return m;
+        const code = codeMatch[1];
+        const stamps = keyMap[code] ? `   ${keyMap[code].join(", ")}` : "";
+        return m + stamps;
+      });
+
+    // render EXACTLY like Coding Only (same wrapper, no <pre>, no trimming)
+    host.innerHTML = `<div>${html}</div>`;
+
+
+
+
+
+  }
+
+
 
     
         // ---- Keys view (grid + CRUD) ----
@@ -1683,30 +1809,10 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const headers = Array.from({length:chamberCount}, (_,i)=>String(i+1));
       let html = '';
       html += `<div class="pinGrid" style="grid-template-columns: 70px repeat(${chamberCount}, minmax(36px,auto));">`;
-
-      // helper to test empties safely (numbers/strings)
-      const hasVal = (v)=>{
-        if (v === undefined || v === null) return false;
-        const t = String(v).trim();
-        return t !== '' && t !== ' ';
-      };
-
-      // BP row – only show boxes that have a number
-      html += `<div class="pinCell"><strong>BP</strong></div>${bpRow.map(v=>{
-        return hasVal(v) ? `<div class="pinCell" style="text-align:center;">${v}</div>` : `<div style="width:36px;"></div>`;
-      }).join('')}`;
-
-      // MP rows – skip boxes if empty
+      html += `<div class="pinCell"><strong>BP</strong></div>${bpRow.map(v=>`<div class="pinCell" style="text-align:center;">${v}</div>`).join('')}`;
       mpRows.forEach((row, idx)=>{
-        html += `<div class="pinCell"><strong>MP${idx+1}</strong></div>${row.map(v=>{
-          return hasVal(v) ? `<div class="pinCell" style="text-align:center;">${v}</div>` : `<div style="width:36px;"></div>`;
-        }).join('')}`;
+        html += `<div class="pinCell"><strong>MP${idx+1}</strong></div>${row.map(v=>`<div class="pinCell" style="text-align:center;">${v}</div>`).join('')}`;
       });
-
-      // close grid container
-      html += `</div>`;
-
-
       html += `</div>`;
 
       chart.innerHTML = html;
@@ -1861,31 +1967,35 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const box = document.getElementById('assignTree');
       const lines = (_currentSystem && _currentSystem.lines) ? _currentSystem.lines.slice() : [];
 
-      // Build clickable list of codes extracted from lines
+      // Build clickable list (type + error flag)
       const items = [];
       lines.forEach(line=>{
-        let raw = line.replace(/%c/g, '');
+        const raw = line.replace(/%c/g, '');
         let label = '';
         let code  = '';
-
+        let type  = ''; // 'GMK' | 'MK' | 'CK'
         if (/^GMK - /.test(raw)){
           label = 'GMK';
           code  = raw.split(' - ')[1] || '';
+          type  = 'GMK';
         } else if (/^MK\d+/.test(raw)){
           const parts = raw.split(' - ');
           label = parts[0].trim();
-          code  = (parts[1]||'').split('  ')[0]; // before any error text
+          code  = (parts[1]||'').split('  ')[0];
+          type  = 'MK';
         } else if (/^\s+CK\d+\.\d+/.test(raw)){
           const parts = raw.trim().split(' - ');
           label = parts[0].trim();
           code  = (parts[1]||'').split('  ')[0];
+          type  = 'CK';
         }
         if (code){
-          items.push({ label, code, raw });
+          const hasErr = /\b(MAC|DFC|MCV)\s*Error\b/i.test(raw);
+          items.push({ label, code, type, hasErr, raw });
         }
       });
 
-      // Exclude codes already assigned to other keys (allow current key's code while editing)
+      // Exclude codes already assigned to other keys (allow current key’s code while editing)
       const used = new Set(
         ((_currentSystem && _currentSystem.keys) ? _currentSystem.keys : [])
           .map(k => (k.code || '').trim())
@@ -1895,40 +2005,58 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         const currentCode = (_currentSystem.keys[_editingKeyIndex].code || '').trim();
         if (currentCode) used.delete(currentCode);
       }
-      const available = items.filter(it => !used.has(String(it.code).trim()));
+      const pool = items.filter(it => !used.has(String(it.code).trim()));
 
-      let html = '';
-      html += '<div style="display:flex;flex-direction:column;gap:6px;">';
-      if (!available.length){
-        html += '<div class="muted">No unassigned codes available.</div>';
-      } else {
-        available.forEach((it)=>{
-          html += `<button type="button" data-code="${it.code}" style="text-align:left;padding:8px 10px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;cursor:pointer;">`;
-          html += `  <div><strong>${it.label}</strong> – ${it.code}</div>`;
-          html += `</button>`;
+      // render helper with colouring + error toggle
+      let showErrors = false;
+      const toggleBtn = document.getElementById('assignToggleErr');
+
+      function renderList(){
+        const list = showErrors ? pool : pool.filter(it => !it.hasErr);
+        let html = '<div style="display:flex;flex-direction:column;gap:6px;">';
+        if (!list.length){
+          html += '<div class="muted">No unassigned codes available.</div>';
+        } else {
+          list.forEach((it)=>{
+            // colour by type (errors override)
+            let line = `<strong>${it.label}</strong> – ${it.code}`;
+            if (it.type === 'GMK')       line = `<span class="tmk">${line}</span>`;
+            else if (it.type === 'MK')   line = `<span class="mk">${line}</span>`;
+            // CK stays default (white)
+            if (it.hasErr)               line = `<span class="err">${line}</span>`;
+            html += `<button type="button" data-code="${it.code}" style="text-align:left;padding:8px 10px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;cursor:pointer;">${line}</button>`;
+          });
+        }
+        html += '</div>';
+        box.innerHTML = html;
+
+        // selection wiring (rebind after each render)
+        selectedCode = '';
+        const buttons = Array.from(box.querySelectorAll('button[data-code]'));
+        buttons.forEach(b=>{
+          b.onclick = ()=>{
+            buttons.forEach(x=>{
+              x.style.borderColor = '#1e1e1e';
+              x.style.background  = '#0a0a0a';
+            });
+            b.style.borderColor = 'var(--accent)';
+            b.style.background  = '#0b0b0b';
+            selectedCode = String(b.getAttribute('data-code') || '');
+          };
         });
       }
-      html += '</div>';
 
-      box.innerHTML = html;
-
-
-
-      // Select behaviour
       let selectedCode = '';
-      const buttons = Array.from(box.querySelectorAll('button[data-code]'));
-      buttons.forEach(b=>{
-        b.onclick = ()=>{
-          buttons.forEach(x=>{
-            x.style.borderColor = '#1e1e1e';
-            x.style.background  = '#0a0a0a';
-          });
-          b.style.borderColor = 'var(--accent)';
-          b.style.background  = '#0b0b0b';
-          selectedCode = String(b.getAttribute('data-code') || '');
-        };
-      });
+      renderList();
 
+      if (toggleBtn){
+        toggleBtn.textContent = 'Show Errors';
+        toggleBtn.onclick = ()=>{
+          showErrors = !showErrors;
+          toggleBtn.textContent = showErrors ? 'Hide Errors' : 'Show Errors';
+          renderList();
+        };
+      }
 
       document.getElementById('assignOk').onclick = ()=>{
         if (!selectedCode) { document.getElementById('assignModal').hidden = true; return; }
@@ -1937,13 +2065,13 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         document.getElementById('assignModal').hidden = true;
       };
 
-
       document.getElementById('assignCancel').onclick = ()=>{
         document.getElementById('assignModal').hidden = true;
       };
 
       document.getElementById('assignModal').hidden = false;
     }
+
 
     document.getElementById('assignBackdrop').onclick = ()=>{
       document.getElementById('assignModal').hidden = true;
