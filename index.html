@@ -119,6 +119,54 @@
       border-color: var(--accent);
       background:#0b0b0b;
     }
+    
+        /* Doors grid (same look; 3 columns) */
+    .doorgrid {
+      display:grid;
+      grid-template-columns: 1.2fr 1.8fr 1.2fr;
+      gap:8px;
+      align-items:center;
+    }
+    .doorgrid .hdr { font-weight:600; }
+    .doorrow {
+      display:grid;
+      grid-template-columns: 1.2fr 1.8fr 1.2fr;
+      gap:8px;
+      align-items:center;
+      cursor:pointer;
+      padding:12px 14px;
+      border:1px solid #1e1e1e;
+      border-radius:12px;
+      background:#0e0e0e;
+    }
+    .doorcell { padding:0; border:0; background:transparent; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .doorrow.selected { border-color: var(--accent); background:#0b0b0b; }
+    
+    /* Active tab highlight */
+    .tabbtn.active{
+      color: var(--accent);
+      border-color: var(--accent);
+      background:#0b0b0b;
+    }
+    
+        /* Pinning chart grid */
+    .pinGrid {
+      display:grid;
+      grid-auto-rows:minmax(28px,auto);
+      gap:6px;
+      align-items:center;
+      width:max-content;
+    }
+    .pinHdr, .pinCell {
+      padding:8px 10px;
+      border:1px solid #1e1e1e;
+      border-radius:10px;
+      background:#0e0e0e;
+      white-space:nowrap;
+    }
+    .pinHdr { font-weight:600; }
+
+
 
 
 
@@ -206,10 +254,10 @@
     <div class="card" style="margin-top:8px;">
       <div class="inline" style="justify-content:space-between; width:100%; flex-wrap:wrap; gap:10px;">
         <div class="btnbar" style="margin-top:0">
-          <button id="btnSysKeys">Keys</button>
-          <button id="btnSysDoors">Doors</button>
-          <button id="btnSysTree">Coding Tree</button>
-          <button id="btnSysNotes">Notes</button>
+          <button id="btnSysKeys"  class="tabbtn">Keys</button>
+          <button id="btnSysDoors" class="tabbtn">Doors</button>
+          <button id="btnSysTree"  class="tabbtn">Coding Tree</button>
+          <button id="btnSysNotes" class="tabbtn">Notes</button>
           <button id="btnSysClose">Close System</button>
         </div>
       </div>
@@ -434,6 +482,81 @@
       <div class="btnbar" style="justify-content:flex-end">
         <button id="deleteKeyCancel">Cancel</button>
         <button id="deleteKeyConfirm" class="warn">Delete Key</button>
+      </div>
+    </div>
+  </div>
+  
+
+  <!-- Door Editor Modal -->
+  <div id="doorModal" class="modal" hidden>
+    <div class="backdrop" id="doorBackdrop"></div>
+    <div class="dialog">
+      <h3>Add / Edit Door</h3>
+      <div class="row">
+        <div>
+          <label for="doorStamping">Stamping</label>
+          <input id="doorStamping" type="text" placeholder="e.g. D01">
+        </div>
+        <div>
+          <label for="doorDesc">Description</label>
+          <input id="doorDesc" type="text" placeholder="e.g. Front Entry Door">
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div>
+          <label for="doorPart">Part Number</label>
+          <input id="doorPart" type="text" placeholder="e.g. 530/70 SS">
+        </div>
+        <div>
+          <label for="doorNotes">Notes</label>
+          <input id="doorNotes" type="text" placeholder="Any notes…">
+        </div>
+      </div>
+      <div class="btnbar" style="justify-content:flex-end">
+        <button id="doorCancel">Cancel</button>
+        <button class="primary" id="doorSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Door Keying Modal (select multiple keys from Keys list) -->
+  <div id="doorKeyingModal" class="modal" hidden>
+    <div class="backdrop" id="doorKeyingBackdrop"></div>
+    <div class="dialog">
+      <h3>Assign Keys to Door</h3>
+      <div id="doorKeyingList" class="out" style="max-height:50vh; overflow:auto; margin-top:8px;"></div>
+      <div class="btnbar" style="justify-content:flex-end">
+        <button id="doorKeyingCancel">Cancel</button>
+        <button class="primary" id="doorKeyingOk">Assign</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Door Modal -->
+  <div id="deleteDoorModal" class="modal" hidden>
+    <div class="backdrop" id="deleteDoorBackdrop"></div>
+    <div class="dialog">
+      <h3>Delete Door</h3>
+      <div id="deleteDoorLine" class="muted" style="margin:8px 0 12px 0;"></div>
+      <div class="btnbar" style="justify-content:flex-end">
+        <button id="deleteDoorCancel">Cancel</button>
+        <button id="deleteDoorConfirm" class="warn">Delete Door</button>
+      </div>
+    </div>
+  </div>
+  
+    <!-- Door Pinning Modal -->
+  <div id="doorPinningModal" class="modal" hidden>
+    <div class="backdrop" id="doorPinningBackdrop"></div>
+    <div class="dialog">
+      <h3>Pinning</h3>
+      <div id="pinningChart" class="out" style="margin-top:8px; overflow:auto;"></div>
+      <div style="margin-top:12px;">
+        <div class="muted" style="margin-bottom:6px;">Keys operating this lock</div>
+        <div id="pinningKeysList" style="max-height:30vh; overflow:auto; padding:0; border:0; background:transparent; text-align:left;"></div>
+      </div>
+      <div class="btnbar" style="justify-content:flex-end; margin-top:12px;">
+        <button id="doorPinningClose">Close</button>
       </div>
     </div>
   </div>
@@ -1128,22 +1251,70 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const btnNotes = document.getElementById('btnSysNotes');
       const content  = document.getElementById('systemContent');
 
+      function setActiveTab(name){
+        const map = {
+          keys : btnKeys,
+          doors: btnDoors,
+          tree : btnTree,
+          notes: btnNotes
+        };
+        [btnKeys, btnDoors, btnTree, btnNotes].forEach(b=>b && b.classList.remove('active'));
+        if (map[name]) map[name].classList.add('active');
+      }
+
       if (btnClose) btnClose.onclick = () => {
         _currentSystem = null;
         showLoad();
       };
 
-      // Simple placeholders for now
-      if (btnKeys)  btnKeys.onclick  = ()=>{ renderKeysView(); };
-      if (btnDoors) btnDoors.onclick = ()=>{ if (content) content.innerHTML = '<div>Doors view (coming soon)</div>'; };
+      if (btnKeys)  btnKeys.onclick  = ()=>{ renderKeysView();  setActiveTab('keys');  };
+      if (btnDoors) btnDoors.onclick = ()=>{ renderDoorsView(); setActiveTab('doors'); };
       if (btnTree)  btnTree.onclick  = ()=>{
         if (!_currentSystem || !content) return;
-        const html = codingLinesToHTML(_currentSystem.lines || []);
+        const html = codingLinesToHTML((_currentSystem && _currentSystem.lines) || []);
         content.innerHTML = `<div class="out">${html}</div>`;
+        setActiveTab('tree');
       };
-
-      if (btnNotes) btnNotes.onclick = ()=>{ if (content) content.innerHTML = '<div>System Notes (coming soon)</div>'; };
+      if (btnNotes) btnNotes.onclick = ()=>{ renderNotesView(); setActiveTab('notes'); };
     })();
+
+
+    // ---- Notes view (editable, auto-save) ----
+    function renderNotesView(){
+      if (!_currentSystem) return;
+      const content = document.getElementById('systemContent');
+      if (!content) return;
+
+      const val = String(_currentSystem.notes || '');
+
+      content.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <label class="muted">System Notes</label>
+          <textarea id="systemNotesTA"
+            style="width:100%; min-height:40vh; resize:vertical; padding:12px; border:1px solid #1e1e1e; border-radius:12px; background:#0e0e0e; color:var(--fg);"
+            placeholder="Type your notes here...">${val.replace(/</g,'&lt;')}</textarea>
+          <div class="muted" id="notesSaveHint" style="font-size:12px;">Changes are saved automatically</div>
+        </div>
+      `;
+
+      const ta = document.getElementById('systemNotesTA');
+      const hint = document.getElementById('notesSaveHint');
+      let t = null;
+
+      ta.addEventListener('input', ()=>{
+        if (t) clearTimeout(t);
+        t = setTimeout(()=>{
+          _currentSystem.notes = ta.value;
+          persistCurrentSystem();
+          if (hint){
+            hint.textContent = 'Saved';
+            setTimeout(()=>{ hint.textContent='Changes are saved automatically'; }, 1200);
+          }
+        }, 250);
+      });
+    }
+    
+
     
         // ---- Keys view (grid + CRUD) ----
     let _editingKeyIndex = null;
@@ -1306,6 +1477,346 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
     }
 
+    // ---- Doors view (grid + CRUD + Keying) ----
+    let _editingDoorIndex = null;
+
+    function ensureDoorsArray(){
+      if (!_currentSystem.doors) _currentSystem.doors = [];
+      // door shape: { stamping, description, part, notes, keys: [keyStamping,...] }
+    }
+
+    function openDoorModal(model){
+      const m = document.getElementById('doorModal');
+      document.getElementById('doorStamping').value = model.stamping || '';
+      document.getElementById('doorDesc').value     = model.description || '';
+      document.getElementById('doorPart').value     = model.part || '';
+      document.getElementById('doorNotes').value    = model.notes || '';
+      m.hidden = false;
+    }
+    function closeDoorModal(){ document.getElementById('doorModal').hidden = true; }
+
+    // Door modal buttons
+    document.getElementById('doorBackdrop').onclick = closeDoorModal;
+    document.getElementById('doorCancel').onclick   = closeDoorModal;
+    document.getElementById('doorSave').onclick     = ()=>{
+      if (!_currentSystem) return;
+      ensureDoorsArray();
+      const obj = {
+        stamping   : (document.getElementById('doorStamping').value || '').trim(),
+        description: (document.getElementById('doorDesc').value || '').trim(),
+        part       : (document.getElementById('doorPart').value || '').trim(),
+        notes      : (document.getElementById('doorNotes').value || '').trim(),
+        keys       : (_editingDoorIndex!=null && _currentSystem.doors[_editingDoorIndex] && Array.isArray(_currentSystem.doors[_editingDoorIndex].keys))
+                      ? _currentSystem.doors[_editingDoorIndex].keys.slice()
+                      : []
+      };
+      if (_editingDoorIndex == null){
+        _currentSystem.doors.push(obj);
+      } else {
+        _currentSystem.doors[_editingDoorIndex] = obj;
+      }
+      persistCurrentSystem();
+      closeDoorModal();
+      renderDoorsView();
+    };
+
+    function openDoorKeyingModal(doorIdx){
+      const modal = document.getElementById('doorKeyingModal');
+      const list  = document.getElementById('doorKeyingList');
+      ensureDoorsArray();
+      ensureKeysArray();
+
+      // build checkboxes from Keys list
+      const allKeys = _currentSystem.keys || [];
+      const assigned = new Set((_currentSystem.doors[doorIdx]?.keys) || []);
+      let html = '';
+      if (!allKeys.length){
+        html = '<div class="muted">No keys in system. Add keys first.</div>';
+      } else {
+        html = '<div style="display:flex;flex-direction:column;gap:6px;">';
+        allKeys.forEach((k, i)=>{
+          const id = `doorKeying_ck_${i}`;
+          const checked = assigned.has(k.stamping||'') ? 'checked' : '';
+          html += `
+            <label for="${id}" style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="${id}" data-stamp="${(k.stamping||'')}" ${checked}>
+              <span><strong>${(k.stamping||'')}</strong> – ${(k.description||'')} ${(k.code?('· '+k.code):'')}</span>
+            </label>`;
+        });
+        html += '</div>';
+      }
+      list.innerHTML = html;
+
+      function closeKeying(){
+        modal.hidden = true;
+        document.getElementById('doorKeyingOk').onclick = null;
+        document.getElementById('doorKeyingCancel').onclick = null;
+        document.getElementById('doorKeyingBackdrop').onclick = null;
+      }
+
+      document.getElementById('doorKeyingCancel').onclick = closeKeying;
+      document.getElementById('doorKeyingBackdrop').onclick = closeKeying;
+
+      document.getElementById('doorKeyingOk').onclick = ()=>{
+        const checks = Array.from(list.querySelectorAll('input[type=checkbox][data-stamp]'));
+        const chosen = checks.filter(c=>c.checked).map(c=>String(c.getAttribute('data-stamp')||'').trim()).filter(Boolean);
+        _currentSystem.doors[doorIdx].keys = chosen;
+        persistCurrentSystem();
+        closeKeying();
+        renderDoorsView();
+      };
+
+      modal.hidden = false;
+    }
+
+    // Delete Door modal wiring
+    (function(){
+      const m  = document.getElementById('deleteDoorModal');
+      const ln = document.getElementById('deleteDoorLine');
+      const ok = document.getElementById('deleteDoorConfirm');
+      const no = document.getElementById('deleteDoorCancel');
+      const bd = document.getElementById('deleteDoorBackdrop');
+
+      window._openDeleteDoor = function(idx){
+        const it = _currentSystem.doors[idx];
+        ln.textContent = `${it?.stamping||''} – ${it?.description||''}`;
+        m.hidden = false;
+
+        function closeDel(){
+          m.hidden = true;
+          ok.onclick = null; no.onclick = null; bd.onclick = null;
+        }
+        no.onclick = closeDel; bd.onclick = closeDel;
+        ok.onclick = ()=>{
+          _currentSystem.doors.splice(idx,1);
+          persistCurrentSystem();
+          closeDel();
+          renderDoorsView();
+        };
+      };
+    })();
+    
+        // ---- Door Pinning (BP + MP rows, then keys list) ----
+    function openDoorPinningModal(doorIdx){
+      ensureDoorsArray();
+      ensureKeysArray();
+
+      const modal   = document.getElementById('doorPinningModal');
+      const chart   = document.getElementById('pinningChart');
+      const keysBox = document.getElementById('pinningKeysList');
+
+      const door = _currentSystem.doors[doorIdx];
+      const stamps = Array.isArray(door?.keys) ? door.keys.slice() : [];
+
+      // collect key objects for this door based on stamping
+      const allKeys = (_currentSystem.keys||[]);
+      const usedKeys = stamps
+        .map(st => allKeys.find(k => (k.stamping||'').trim() === st))
+        .filter(Boolean);
+
+      // render "keys operating this lock" (below chart) — single rows
+      if (!usedKeys.length){
+        keysBox.innerHTML = '<div class="muted">No keys assigned to this door.</div>';
+      } else {
+        keysBox.innerHTML = usedKeys.map(k=>{
+          const s = (k.stamping||'');
+          const d = (k.description||'');
+          const c = (k.code||'');
+          return `<div style="padding:6px 0; border-bottom:1px solid #1e1e1e;">
+                    <strong>${s}</strong> — ${d||'—'}${c ? ` · ${c}` : ''}
+                  </div>`;
+        }).join('');
+      }
+
+
+      // Infer chamber count from assigned keys' numeric code lengths (mode of lengths)
+      const codeLens = usedKeys
+        .map(k => String(k.code||'').replace(/\D/g,'').length)
+        .filter(n => n > 0);
+
+      let chamberCount = 0;
+      if (codeLens.length){
+        const freq = new Map();
+        codeLens.forEach(n => freq.set(n, (freq.get(n)||0)+1));
+        chamberCount = Array.from(freq.entries()).sort((a,b) => b[1]-a[1] || b[0]-a[0])[0][0];
+      }
+
+      if (!chamberCount){
+        chart.innerHTML = `<div class="muted">No numeric key codes found among assigned keys. Pinning cannot be calculated.</div>`;
+        wirePinningClose();
+        modal.hidden = false;
+        return;
+      }
+
+
+      // Build per-chamber unique sorted cuts (using only numeric digits from key codes)
+      // Logic mirrors your Python: per chamber sorted unique, BP = min, MPs = consecutive diffs.
+      // ref: DanMaster.show_pinning_for_door()  (sorted unique cuts, bp = smallest, MPs = diffs) :contentReference[oaicite:1]{index=1}
+      const perChamberCuts = Array.from({length: chamberCount}, (_, ch) => {
+        const cuts = [];
+        usedKeys.forEach(k=>{
+          const codeDigits = String(k.code||'').replace(/\D/g,'');
+          if (codeDigits.length === chamberCount){
+            const d = parseInt(codeDigits[ch], 10);
+            if (!Number.isNaN(d)) cuts.push(d);
+          }
+        });
+        // unique + sort asc
+        return Array.from(new Set(cuts)).sort((a,b)=>a-b);
+      });
+
+      // Bottom pins row = smallest cut per chamber
+      const bpRow = perChamberCuts.map(arr => (arr.length ? arr[0] : ' '));
+
+      // Master pin rows = differences between successive cuts per chamber
+      const maxDiffRows = perChamberCuts.reduce((m, arr)=>Math.max(m, Math.max(0, arr.length-1)), 0);
+      const mpRows = Array.from({length:maxDiffRows}, _=> Array.from({length:chamberCount}, __=>' '));
+      for (let ch=0; ch<chamberCount; ch++){
+        const arr = perChamberCuts[ch];
+        for (let i=1;i<arr.length;i++){
+          const diff = arr[i] - arr[i-1];
+          mpRows[i-1][ch] = String(diff);
+        }
+      }
+
+      // Render chart as a neat grid (headers 1..N)
+      const headers = Array.from({length:chamberCount}, (_,i)=>String(i+1));
+      let html = '';
+      html += `<div class="pinGrid" style="grid-template-columns: 70px repeat(${chamberCount}, minmax(36px,auto));">`;
+
+      // helper to test empties safely (numbers/strings)
+      const hasVal = (v)=>{
+        if (v === undefined || v === null) return false;
+        const t = String(v).trim();
+        return t !== '' && t !== ' ';
+      };
+
+      // BP row – only show boxes that have a number
+      html += `<div class="pinCell"><strong>BP</strong></div>${bpRow.map(v=>{
+        return hasVal(v) ? `<div class="pinCell" style="text-align:center;">${v}</div>` : `<div style="width:36px;"></div>`;
+      }).join('')}`;
+
+      // MP rows – skip boxes if empty
+      mpRows.forEach((row, idx)=>{
+        html += `<div class="pinCell"><strong>MP${idx+1}</strong></div>${row.map(v=>{
+          return hasVal(v) ? `<div class="pinCell" style="text-align:center;">${v}</div>` : `<div style="width:36px;"></div>`;
+        }).join('')}`;
+      });
+
+      // close grid container
+      html += `</div>`;
+
+
+      html += `</div>`;
+
+      chart.innerHTML = html;
+
+      wirePinningClose();
+      modal.hidden = false;
+
+      function wirePinningClose(){
+        const close = ()=>{ modal.hidden = true; };
+        document.getElementById('doorPinningClose').onclick = close;
+        document.getElementById('doorPinningBackdrop').onclick = close;
+      }
+    }
+
+
+    function renderDoorsView(){
+      if (!_currentSystem) return;
+      ensureDoorsArray();
+      const content = document.getElementById('systemContent');
+      if (!content) return;
+
+      const rows = _currentSystem.doors;
+
+      let html = '';
+      html += '<div class="doorgrid">';
+      html += '  <div class="hdr muted">Stamping</div>';
+      html += '  <div class="hdr muted">Description</div>';
+      html += '  <div class="hdr muted">Part Number</div>';
+      html += '</div>';
+
+      html += '<div id="doorRows" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>';
+
+      html += `
+        <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:12px;">
+          <button id="doorAdd">Add</button>
+          <button id="doorEdit" disabled>Edit</button>
+          <button id="doorKeying" disabled>Keying</button>
+          <button id="doorPinning" disabled>Pinning</button>
+          <button id="doorDelete" class="warn" disabled>Delete Door</button>
+        </div>
+      `;
+
+      content.innerHTML = html;
+
+      const host = document.getElementById('doorRows');
+      host.innerHTML = rows.map((d, idx)=>{
+        return (
+          '<button type="button" class="doorrow" data-idx="'+idx+'">' +
+            '<div class="doorcell">'+(d.stamping||'')+'</div>' +
+            '<div class="doorcell">'+(d.description||'')+'</div>' +
+            '<div class="doorcell">'+(d.part||'')+'</div>' +
+          '</button>'
+        );
+      }).join('');
+
+      let selectedIdx = -1;
+      const rowEls = Array.from(host.querySelectorAll('.doorrow'));
+      const btnEdit    = document.getElementById('doorEdit');
+      const btnKeying  = document.getElementById('doorKeying');
+      const btnPinning = document.getElementById('doorPinning');
+      const btnDelete  = document.getElementById('doorDelete');
+
+
+      function selectRow(el){
+        rowEls.forEach(r => r.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedIdx = parseInt(el.getAttribute('data-idx'), 10);
+        btnEdit.disabled    = false;
+        btnKeying.disabled  = false;
+        btnPinning.disabled = false;
+        btnDelete.disabled  = false;
+      }
+
+      rowEls.forEach(el=>{ el.onclick = ()=>selectRow(el); });
+
+      document.getElementById('doorAdd').onclick = ()=>{
+        _editingDoorIndex = null;
+        openDoorModal({ stamping:'', description:'', part:'', notes:'', keys:[] });
+      };
+      document.getElementById('doorEdit').onclick = ()=>{
+        if (selectedIdx < 0) return;
+        _editingDoorIndex = selectedIdx;
+        const it = _currentSystem.doors[selectedIdx] || { stamping:'', description:'', part:'', notes:'', keys:[] };
+        openDoorModal(it);
+      };
+      document.getElementById('doorKeying').onclick = ()=>{
+        if (selectedIdx < 0) return;
+        openDoorKeyingModal(selectedIdx);
+      };
+      document.getElementById('doorPinning').onclick = ()=>{
+        if (selectedIdx < 0) return;
+        openDoorPinningModal(selectedIdx);
+      };
+      document.getElementById('doorDelete').onclick = ()=>{
+        if (selectedIdx < 0) return;
+        window._openDeleteDoor(selectedIdx);
+      };
+
+    }
+
+    
+          // --- Auto-uppercase for Key Stamping ---
+      document.addEventListener('input', e => {
+        if (!e.target) return;
+        if (e.target.id === 'keyStamping' || e.target.id === 'doorStamping') {
+          const cursor = e.target.selectionStart;
+          e.target.value = e.target.value.toUpperCase();
+          e.target.setSelectionRange(cursor, cursor);
+        }
+      });
 
 
 
@@ -1391,8 +1902,8 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       if (!available.length){
         html += '<div class="muted">No unassigned codes available.</div>';
       } else {
-        available.forEach((it, idx)=>{
-          html += `<button type="button" data-idx="${idx}" style="text-align:left;padding:8px 10px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;cursor:pointer;">`;
+        available.forEach((it)=>{
+          html += `<button type="button" data-code="${it.code}" style="text-align:left;padding:8px 10px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;cursor:pointer;">`;
           html += `  <div><strong>${it.label}</strong> – ${it.code}</div>`;
           html += `</button>`;
         });
@@ -1402,9 +1913,10 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       box.innerHTML = html;
 
 
+
       // Select behaviour
-      let localSel = -1;
-      const buttons = Array.from(box.querySelectorAll('button[data-idx]'));
+      let selectedCode = '';
+      const buttons = Array.from(box.querySelectorAll('button[data-code]'));
       buttons.forEach(b=>{
         b.onclick = ()=>{
           buttons.forEach(x=>{
@@ -1413,16 +1925,18 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           });
           b.style.borderColor = 'var(--accent)';
           b.style.background  = '#0b0b0b';
-          localSel = parseInt(b.getAttribute('data-idx'),10);
+          selectedCode = String(b.getAttribute('data-code') || '');
         };
       });
 
+
       document.getElementById('assignOk').onclick = ()=>{
-        if (localSel < 0) { document.getElementById('assignModal').hidden = true; return; }
-        _assignSelectedCode = items[localSel].code;
+        if (!selectedCode) { document.getElementById('assignModal').hidden = true; return; }
+        _assignSelectedCode = selectedCode;
         document.getElementById('keyCodeDisplay').value = _assignSelectedCode;
         document.getElementById('assignModal').hidden = true;
       };
+
 
       document.getElementById('assignCancel').onclick = ()=>{
         document.getElementById('assignModal').hidden = true;
