@@ -166,7 +166,7 @@
           <button id="btnSysKeys">Keys</button>
           <button id="btnSysDoors">Doors</button>
           <button id="btnSysTree">Coding Tree</button>
-          <button id="btnSysNotes">System Notes</button>
+          <button id="btnSysNotes">Notes</button>
           <button id="btnSysClose">Close System</button>
         </div>
       </div>
@@ -300,6 +300,50 @@
       <div class="btnbar" style="justify-content:flex-end">
         <button id="saveCancel">Cancel</button>
         <button class="primary" id="saveOk">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Editor Modal -->
+  <div id="keyModal" class="modal" hidden>
+    <div class="backdrop" id="keyBackdrop"></div>
+    <div class="dialog">
+      <h3>Add / Edit Key</h3>
+      <div class="row">
+        <div>
+          <label for="keyStamping">Key Stamping</label>
+          <input id="keyStamping" type="text" placeholder="e.g. G01">
+        </div>
+        <div>
+          <label for="keyDesc">Key Description</label>
+          <input id="keyDesc" type="text" placeholder="e.g. Front Lobby Key">
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div>
+          <label for="keyCodeDisplay">Assigned Code</label>
+          <input id="keyCodeDisplay" type="text" placeholder="Tap Assign Code" readonly>
+        </div>
+      </div>
+      <div class="btnbar" style="justify-content:flex-end">
+        <button id="keyCancel">Cancel</button>
+        <button id="keyAssignOpen">Assign Code</button>
+        <button class="primary" id="keySave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assign Code Modal -->
+  <div id="assignModal" class="modal" hidden>
+    <div class="backdrop" id="assignBackdrop"></div>
+    <div class="dialog">
+      <h3>Assign Code</h3>
+      <div id="assignTree"
+           class="out"
+           style="max-height:50vh; overflow:auto; margin-top:8px;"></div>
+      <div class="btnbar" style="justify-content:flex-end">
+        <button id="assignCancel">Cancel</button>
+        <button class="primary" id="assignOk">Assign</button>
       </div>
     </div>
   </div>
@@ -506,60 +550,60 @@
 
     // ---------- UI wiring ----------
     let outEl = $('#out');
-    const statsEl = $('#stats');
+const statsEl = $('#stats');
 
+// Reusable: turn coding lines into coloured HTML
+function codingLinesToHTML(lines){
+  return lines.map(line=>{
+    const hasErr = /(?:MAC|DFC|MCV)\s*Error/.test(line); // catches Errors
 
-      function printLines(lines){
-        const html = lines.map(line=>{
-            const hasErr = /(?:MAC|DFC|MCV)\s*Error/.test(line); // catches Errors
+    if (line.startsWith('%cMK')) {
+      // MK line with style markers
+      const safe = line
+          .replace(/%c/g,'')
+          .replace(/&/g,'&amp;')
+          .replace(/</g,'&lt;')
+          .replace(/>/g,'&gt;');
 
+      if (hasErr) {
+        // Whole MK line red (label + code + error)
+        return `<span class="err">${safe}</span>`;
+      } else {
+        // MK label cyan, rest normal
+        const [head, ...rest] = safe.split('  ');
+        const tail = rest.join('  ');
+        return `<span class="mk">${head}</span>${tail ? `  ${tail}` : ''}`;
+      }
 
-            if (line.startsWith('%cMK')) {
-                // MK line with style markers
-                const safe = line
-                    .replace(/%c/g,'')
-                    .replace(/&/g,'&amp;')
-                    .replace(/</g,'&lt;')
-                    .replace(/>/g,'&gt;');
+    } else if (line.startsWith('GMK -')) {
+      const esc = line
+          .replace(/&/g,'&amp;')
+          .replace(/</g,'&lt;')
+          .replace(/>/g,'&gt;');
+      return `<span class="tmk">${esc}</span>`;
 
-                if (hasErr) {
-                    // Whole MK line red (label + code + error)
-                    return `<span class="err">${safe}</span>`;
-                } else {
-                    // MK label cyan, rest normal
-                    const [head, ...rest] = safe.split('  ');
-                    const tail = rest.join('  ');
-                    return `<span class="mk">${head}</span>${tail ? `  ${tail}` : ''}`;
-                }
+    } else if (line.startsWith('TMK   :')) {
+      const esc = line
+          .replace(/&/g,'&amp;')
+          .replace(/</g,'&lt;')
+          .replace(/>/g,'&gt;');
+      return esc;
 
-
-            } else if (line.startsWith('GMK -')) {
-                const esc = line
-                    .replace(/&/g,'&amp;')
-                    .replace(/</g,'&lt;')
-                    .replace(/>/g,'&gt;');
-                return `<span class="tmk">${esc}</span>`;
-
-            } else if (line.startsWith('TMK   :')) {
-                const esc = line
-                    .replace(/&/g,'&amp;')
-                    .replace(/</g,'&lt;')
-                    .replace(/>/g,'&gt;');
-                return esc;
-
-
-            } else {
-                // CK lines and any other lines
-                const esc = line
-                    .replace(/&/g,'&amp;')
-                    .replace(/</g,'&lt;')
-                    .replace(/>/g,'&gt;');
-                return hasErr ? `<span class="err">${esc}</span>` : esc;
-            }
-        }).join('\n');
-
-        outEl.innerHTML = html;
+    } else {
+      // CK lines and any other lines
+      const esc = line
+          .replace(/&/g,'&amp;')
+          .replace(/</g,'&lt;')
+          .replace(/>/g,'&gt;');
+      return hasErr ? `<span class="err">${esc}</span>` : esc;
     }
+  }).join('\n');
+}
+
+// Keep Create screen behaviour
+function printLines(lines){
+  outEl.innerHTML = codingLinesToHTML(lines);
+}
 
 
     function toCSV(rows){
@@ -1012,18 +1056,266 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       };
 
       // Simple placeholders for now
-      if (btnKeys)  btnKeys.onclick  = ()=>{ if (content) content.innerHTML = '<div>Keys view (coming soon)</div>'; };
+      if (btnKeys)  btnKeys.onclick  = ()=>{ renderKeysView(); };
       if (btnDoors) btnDoors.onclick = ()=>{ if (content) content.innerHTML = '<div>Doors view (coming soon)</div>'; };
       if (btnTree)  btnTree.onclick  = ()=>{
         if (!_currentSystem || !content) return;
-        const pre = document.createElement('pre');
-        pre.className = 'out';
-        pre.textContent = (_currentSystem.lines || []).join('\n');
-        content.innerHTML = '';
-        content.appendChild(pre);
+        const html = codingLinesToHTML(_currentSystem.lines || []);
+        content.innerHTML = `<div class="out">${html}</div>`;
       };
+
       if (btnNotes) btnNotes.onclick = ()=>{ if (content) content.innerHTML = '<div>System Notes (coming soon)</div>'; };
     })();
+    
+        // ---- Keys view (grid + CRUD) ----
+    let _editingKeyIndex = null;
+    let _assignSelectedCode = '';
+
+    function persistCurrentSystem(){
+      if (!_currentSystem) return;
+      const systems = getSystems();
+      const i = systems.findIndex(s => s.id === _currentSystem.id);
+      if (i >= 0) systems[i] = _currentSystem; else systems.push(_currentSystem);
+      setSystems(systems);
+    }
+
+    function ensureKeysArray(){
+      if (!_currentSystem.keys) _currentSystem.keys = [];
+    }
+
+    function renderKeysView(){
+      if (!_currentSystem) return;
+      ensureKeysArray();
+      const content = document.getElementById('systemContent');
+      if (!content) return;
+
+      // Build grid
+      const rows = _currentSystem.keys;
+      let html = '';
+      html += '<div style="display:grid;grid-template-columns:1.2fr 1.8fr 1.2fr .6fr;gap:8px;align-items:center;">';
+      html += '  <div class="muted" style="font-weight:600;">Key Stamping</div>';
+      html += '  <div class="muted" style="font-weight:600;">Key Description</div>';
+      html += '  <div class="muted" style="font-weight:600;">Assigned Code</div>';
+      html += '  <div class="muted" style="font-weight:600;">Qty</div>';
+
+      rows.forEach((k, idx)=>{
+        html += `<button type="button"
+                          data-idx="${idx}"
+                          style="display:contents;cursor:pointer;">`;
+
+        html += `  <div style="padding:10px 12px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;text-align:left;">${(k.stamping||'')}</div>`;
+        html += `  <div style="padding:10px 12px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;text-align:left;">${(k.description||'')}</div>`;
+        html += `  <div style="padding:10px 12px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;text-align:left;">${(k.code||'')}</div>`;
+        html += `  <div style="padding:10px 12px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;text-align:right;">${(k.qty||0)}</div>`;
+
+        html += `</button>`;
+      });
+
+      html += '</div>';
+
+      // Bottom bar
+      html += `
+        <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:12px;">
+          <button id="keyAdd">Add</button>
+          <button id="keyEdit" disabled>Edit</button>
+          <button id="keyCut" disabled>Cut Keys</button>
+          <button id="keyDelete" class="warn" disabled>Delete Key</button>
+        </div>
+      `;
+
+      content.innerHTML = html;
+
+      // Selection wiring
+      let selectedIdx = -1;
+      const gridButtons = Array.from(content.querySelectorAll('button[data-idx]'));
+      const btnEdit = document.getElementById('keyEdit');
+      const btnCut  = document.getElementById('keyCut');
+      const btnDel  = document.getElementById('keyDelete');
+
+      gridButtons.forEach(btn=>{
+        btn.onclick = ()=>{
+          gridButtons.forEach(b=>{
+            const kids = b.querySelectorAll('div');
+            kids.forEach(kd=>{ kd.style.borderColor = '#1e1e1e'; kd.style.background = '#0a0a0a'; });
+          });
+          const kids = btn.querySelectorAll('div');
+          kids.forEach(kd=>{ kd.style.borderColor = 'var(--accent)'; kd.style.background = '#0b0b0b'; });
+          selectedIdx = parseInt(btn.getAttribute('data-idx'),10);
+          btnEdit.disabled = false;
+          btnCut.disabled  = false;
+          btnDel.disabled  = false;
+        };
+      });
+
+      // Add
+      document.getElementById('keyAdd').onclick = ()=>{
+        _editingKeyIndex = null;
+        openKeyModal({ stamping:'', description:'', code:'', qty:0 });
+      };
+
+      // Edit
+      document.getElementById('keyEdit').onclick = ()=>{
+        if (selectedIdx < 0) return;
+        _editingKeyIndex = selectedIdx;
+        const it = _currentSystem.keys[selectedIdx] || { stamping:'', description:'', code:'', qty:0 };
+        openKeyModal(it);
+      };
+
+      // Cut keys
+      document.getElementById('keyCut').onclick = ()=>{
+        if (selectedIdx < 0) return;
+        const n = prompt('How many copies to cut? (positive integer)', '1');
+        const v = Number(n);
+        if (!Number.isFinite(v) || v <= 0) return;
+        ensureKeysArray();
+        _currentSystem.keys[selectedIdx].qty = (_currentSystem.keys[selectedIdx].qty||0) + Math.floor(v);
+        persistCurrentSystem();
+        renderKeysView();
+      };
+
+      // Delete
+      document.getElementById('keyDelete').onclick = ()=>{
+        if (selectedIdx < 0) return;
+        const it = _currentSystem.keys[selectedIdx];
+        if (!it) return;
+        if (!confirm(`Delete key "${it.stamping||''} - ${it.description||''}"?`)) return;
+        _currentSystem.keys.splice(selectedIdx,1);
+        persistCurrentSystem();
+        renderKeysView();
+      };
+    }
+
+    // --- Key Editor Modal helpers ---
+    function openKeyModal(model){
+      const m = document.getElementById('keyModal');
+      document.getElementById('keyStamping').value    = model.stamping || '';
+      document.getElementById('keyDesc').value        = model.description || '';
+      document.getElementById('keyCodeDisplay').value = model.code || '';
+      _assignSelectedCode = model.code || '';
+      m.hidden = false;
+    }
+    function closeKeyModal(){
+      document.getElementById('keyModal').hidden = true;
+    }
+
+    // Key modal buttons
+    document.getElementById('keyBackdrop').onclick = closeKeyModal;
+    document.getElementById('keyCancel').onclick   = closeKeyModal;
+
+    document.getElementById('keySave').onclick = ()=>{
+      if (!_currentSystem) return;
+      ensureKeysArray();
+      const stamping = (document.getElementById('keyStamping').value || '').trim();
+      const desc     = (document.getElementById('keyDesc').value || '').trim();
+      const code     = (document.getElementById('keyCodeDisplay').value || '').trim();
+
+      const obj = { stamping, description: desc, code, qty: (_editingKeyIndex!=null && _currentSystem.keys[_editingKeyIndex]) ? (_currentSystem.keys[_editingKeyIndex].qty||0) : 0 };
+
+      if (_editingKeyIndex == null){
+        _currentSystem.keys.push(obj);
+      } else {
+        _currentSystem.keys[_editingKeyIndex] = obj;
+      }
+      persistCurrentSystem();
+      closeKeyModal();
+      renderKeysView();
+    };
+
+    // --- Assign Code Modal ---
+    function openAssignModal(){
+      const box = document.getElementById('assignTree');
+      const lines = (_currentSystem && _currentSystem.lines) ? _currentSystem.lines.slice() : [];
+
+      // Build clickable list of codes extracted from lines
+      const items = [];
+      lines.forEach(line=>{
+        let raw = line.replace(/%c/g, '');
+        let label = '';
+        let code  = '';
+
+        if (/^GMK - /.test(raw)){
+          label = 'GMK';
+          code  = raw.split(' - ')[1] || '';
+        } else if (/^MK\d+/.test(raw)){
+          const parts = raw.split(' - ');
+          label = parts[0].trim();
+          code  = (parts[1]||'').split('  ')[0]; // before any error text
+        } else if (/^\s+CK\d+\.\d+/.test(raw)){
+          const parts = raw.trim().split(' - ');
+          label = parts[0].trim();
+          code  = (parts[1]||'').split('  ')[0];
+        }
+        if (code){
+          items.push({ label, code, raw });
+        }
+      });
+
+      // Exclude codes already assigned to other keys (allow current key's code while editing)
+      const used = new Set(
+        ((_currentSystem && _currentSystem.keys) ? _currentSystem.keys : [])
+          .map(k => (k.code || '').trim())
+          .filter(Boolean)
+      );
+      if (_editingKeyIndex != null && _currentSystem && _currentSystem.keys[_editingKeyIndex]){
+        const currentCode = (_currentSystem.keys[_editingKeyIndex].code || '').trim();
+        if (currentCode) used.delete(currentCode);
+      }
+      const available = items.filter(it => !used.has(String(it.code).trim()));
+
+      let html = '';
+      html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+      if (!available.length){
+        html += '<div class="muted">No unassigned codes available.</div>';
+      } else {
+        available.forEach((it, idx)=>{
+          html += `<button type="button" data-idx="${idx}" style="text-align:left;padding:8px 10px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;cursor:pointer;">`;
+          html += `  <div><strong>${it.label}</strong> – ${it.code}</div>`;
+          html += `</button>`;
+        });
+      }
+      html += '</div>';
+
+      box.innerHTML = html;
+
+
+      // Select behaviour
+      let localSel = -1;
+      const buttons = Array.from(box.querySelectorAll('button[data-idx]'));
+      buttons.forEach(b=>{
+        b.onclick = ()=>{
+          buttons.forEach(x=>{
+            x.style.borderColor = '#1e1e1e';
+            x.style.background  = '#0a0a0a';
+          });
+          b.style.borderColor = 'var(--accent)';
+          b.style.background  = '#0b0b0b';
+          localSel = parseInt(b.getAttribute('data-idx'),10);
+        };
+      });
+
+      document.getElementById('assignOk').onclick = ()=>{
+        if (localSel < 0) { document.getElementById('assignModal').hidden = true; return; }
+        _assignSelectedCode = items[localSel].code;
+        document.getElementById('keyCodeDisplay').value = _assignSelectedCode;
+        document.getElementById('assignModal').hidden = true;
+      };
+
+      document.getElementById('assignCancel').onclick = ()=>{
+        document.getElementById('assignModal').hidden = true;
+      };
+
+      document.getElementById('assignModal').hidden = false;
+    }
+
+    document.getElementById('assignBackdrop').onclick = ()=>{
+      document.getElementById('assignModal').hidden = true;
+    };
+
+    document.getElementById('keyAssignOpen').onclick = ()=>{
+      if (!_currentSystem) return;
+      openAssignModal();
+    };
+
 
 
     // Build the load list from local storage
