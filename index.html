@@ -79,6 +79,49 @@
       font-weight: 600;
     }
 
+    /* Keys grid */
+    .keygrid {
+      display:grid;
+      grid-template-columns: 1.2fr 1.8fr 1.2fr .6fr;
+      gap:8px;
+      align-items:center;
+    }
+    .keygrid .hdr {
+      font-weight:600;
+    }
+    .keyrow {
+      display:grid;
+      grid-template-columns: 1.2fr 1.8fr 1.2fr .6fr;
+      gap:8px;
+      align-items:center;
+      cursor:pointer;
+
+      /* one solid row box */
+      padding:12px 14px;
+      border:1px solid #1e1e1e;
+      border-radius:12px;
+      background:#0e0e0e;
+    }
+    .keycell {
+      /* no individual boxes — just text inside the row box */
+      padding:0;
+      border:0;
+      background:transparent;
+      text-align:left;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .keycell.qty {
+      text-align:right;
+    }
+    .keyrow.selected {
+      border-color: var(--accent);
+      background:#0b0b0b;
+    }
+
+
+
 
   </style>
 </head>
@@ -316,13 +359,13 @@
         </div>
         <div>
           <label for="keyDesc">Key Description</label>
-          <input id="keyDesc" type="text" placeholder="e.g. Front Lobby Key">
+          <input id="keyDesc" type="text" placeholder="e.g. Front Door Key">
         </div>
       </div>
       <div class="row" style="margin-top:10px;">
         <div>
           <label for="keyCodeDisplay">Assigned Code</label>
-          <input id="keyCodeDisplay" type="text" placeholder="Tap Assign Code" readonly>
+          <input id="keyCodeDisplay" type="text" placeholder="No Code Assigned" readonly>
         </div>
       </div>
       <div class="btnbar" style="justify-content:flex-end">
@@ -360,6 +403,41 @@
       </div>
     </div>
   </div>
+  
+  <!-- Cut Keys Modal -->
+  <div id="cutKeyModal" class="modal" hidden>
+    <div class="backdrop" id="cutKeyBackdrop"></div>
+    <div class="dialog">
+      <h3>Cut Keys</h3>
+      <p class="muted" style="margin:6px 0 12px 0;">
+        How many <strong id="cutKeyLabel">—</strong> keys would you like to cut?
+      </p>
+      <div class="row" style="margin-top:6px;">
+        <div>
+          <label for="cutQty">Quantity</label>
+          <input id="cutQty" type="number" inputmode="numeric" min="1" step="1" placeholder="1">
+        </div>
+      </div>
+      <div class="btnbar" style="justify-content:flex-end">
+        <button id="cutCancel">Cancel</button>
+        <button class="primary" id="cutConfirm">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Key Modal -->
+  <div id="deleteKeyModal" class="modal" hidden>
+    <div class="backdrop" id="deleteKeyBackdrop"></div>
+    <div class="dialog">
+      <h3>Delete Key</h3>
+      <div id="deleteKeyLine" class="muted" style="margin:8px 0 12px 0;"></div>
+      <div class="btnbar" style="justify-content:flex-end">
+        <button id="deleteKeyCancel">Cancel</button>
+        <button id="deleteKeyConfirm" class="warn">Delete Key</button>
+      </div>
+    </div>
+  </div>
+
 
 
 
@@ -1089,31 +1167,18 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const content = document.getElementById('systemContent');
       if (!content) return;
 
-      // Build grid
       const rows = _currentSystem.keys;
+
       let html = '';
-      html += '<div style="display:grid;grid-template-columns:1.2fr 1.8fr 1.2fr .6fr;gap:8px;align-items:center;">';
-      html += '  <div class="muted" style="font-weight:600;">Key Stamping</div>';
-      html += '  <div class="muted" style="font-weight:600;">Key Description</div>';
-      html += '  <div class="muted" style="font-weight:600;">Assigned Code</div>';
-      html += '  <div class="muted" style="font-weight:600;">Qty</div>';
-
-      rows.forEach((k, idx)=>{
-        html += `<button type="button"
-                          data-idx="${idx}"
-                          style="display:contents;cursor:pointer;">`;
-
-        html += `  <div style="padding:10px 12px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;text-align:left;">${(k.stamping||'')}</div>`;
-        html += `  <div style="padding:10px 12px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;text-align:left;">${(k.description||'')}</div>`;
-        html += `  <div style="padding:10px 12px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;text-align:left;">${(k.code||'')}</div>`;
-        html += `  <div style="padding:10px 12px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;text-align:right;">${(k.qty||0)}</div>`;
-
-        html += `</button>`;
-      });
-
+      html += '<div class="keygrid">';
+      html += '  <div class="hdr muted">Stamping</div>';
+      html += '  <div class="hdr muted">Description</div>';
+      html += '  <div class="hdr muted">Code</div>';
+      html += '  <div class="hdr muted">Qty</div>';
       html += '</div>';
 
-      // Bottom bar
+      html += '<div id="keyRows" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>';
+
       html += `
         <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:12px;">
           <button id="keyAdd">Add</button>
@@ -1125,35 +1190,42 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
       content.innerHTML = html;
 
-      // Selection wiring
+      const rowsHost = document.getElementById('keyRows');
+      rowsHost.innerHTML = rows.map((k, idx) => {
+        return (
+          '<button type="button" class="keyrow" data-idx="'+idx+'">' +
+            '<div class="keycell">'+(k.stamping||'')+'</div>' +
+            '<div class="keycell">'+(k.description||'')+'</div>' +
+            '<div class="keycell">'+(k.code||'')+'</div>' +
+            '<div class="keycell qty">'+((k.qty||0))+'</div>' +
+          '</button>'
+        );
+      }).join('');
+
       let selectedIdx = -1;
-      const gridButtons = Array.from(content.querySelectorAll('button[data-idx]'));
+      const rowEls = Array.from(rowsHost.querySelectorAll('.keyrow'));
       const btnEdit = document.getElementById('keyEdit');
       const btnCut  = document.getElementById('keyCut');
       const btnDel  = document.getElementById('keyDelete');
 
-      gridButtons.forEach(btn=>{
-        btn.onclick = ()=>{
-          gridButtons.forEach(b=>{
-            const kids = b.querySelectorAll('div');
-            kids.forEach(kd=>{ kd.style.borderColor = '#1e1e1e'; kd.style.background = '#0a0a0a'; });
-          });
-          const kids = btn.querySelectorAll('div');
-          kids.forEach(kd=>{ kd.style.borderColor = 'var(--accent)'; kd.style.background = '#0b0b0b'; });
-          selectedIdx = parseInt(btn.getAttribute('data-idx'),10);
-          btnEdit.disabled = false;
-          btnCut.disabled  = false;
-          btnDel.disabled  = false;
-        };
+      function selectRow(el){
+        rowEls.forEach(r => r.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedIdx = parseInt(el.getAttribute('data-idx'), 10);
+        btnEdit.disabled = false;
+        btnCut.disabled  = false;
+        btnDel.disabled  = false;
+      }
+
+      rowEls.forEach(el=>{
+        el.onclick = ()=>selectRow(el);
       });
 
-      // Add
       document.getElementById('keyAdd').onclick = ()=>{
         _editingKeyIndex = null;
         openKeyModal({ stamping:'', description:'', code:'', qty:0 });
       };
 
-      // Edit
       document.getElementById('keyEdit').onclick = ()=>{
         if (selectedIdx < 0) return;
         _editingKeyIndex = selectedIdx;
@@ -1161,29 +1233,81 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         openKeyModal(it);
       };
 
-      // Cut keys
       document.getElementById('keyCut').onclick = ()=>{
         if (selectedIdx < 0) return;
-        const n = prompt('How many copies to cut? (positive integer)', '1');
-        const v = Number(n);
-        if (!Number.isFinite(v) || v <= 0) return;
-        ensureKeysArray();
-        _currentSystem.keys[selectedIdx].qty = (_currentSystem.keys[selectedIdx].qty||0) + Math.floor(v);
-        persistCurrentSystem();
-        renderKeysView();
+
+        const m   = document.getElementById('cutKeyModal');
+        const qty = document.getElementById('cutQty');
+        const go  = document.getElementById('cutConfirm');
+        const no  = document.getElementById('cutCancel');
+        const bd  = document.getElementById('cutKeyBackdrop');
+
+        const lab = document.getElementById('cutKeyLabel');
+        const it  = _currentSystem.keys[selectedIdx];
+        lab.textContent = (it && it.stamping) ? it.stamping : '';
+
+        qty.value = '1';
+        m.hidden = false;
+
+        function closeCut(){
+          m.hidden = true;
+          go.onclick = null;
+          no.onclick = null;
+          bd.onclick = null;
+        }
+
+
+        no.onclick = closeCut;
+        bd.onclick = closeCut;
+
+        go.onclick = ()=>{
+          const v = Number(qty.value);
+          if (!Number.isFinite(v) || v <= 0) { closeCut(); return; }
+          ensureKeysArray();
+          _currentSystem.keys[selectedIdx].qty = (_currentSystem.keys[selectedIdx].qty||0) + Math.floor(v);
+          persistCurrentSystem();
+          closeCut();
+          renderKeysView();
+        };
       };
 
-      // Delete
+
       document.getElementById('keyDelete').onclick = ()=>{
         if (selectedIdx < 0) return;
         const it = _currentSystem.keys[selectedIdx];
         if (!it) return;
-        if (!confirm(`Delete key "${it.stamping||''} - ${it.description||''}"?`)) return;
-        _currentSystem.keys.splice(selectedIdx,1);
-        persistCurrentSystem();
-        renderKeysView();
+
+        const m   = document.getElementById('deleteKeyModal');
+        const ln  = document.getElementById('deleteKeyLine');
+        const go  = document.getElementById('deleteKeyConfirm');
+        const no  = document.getElementById('deleteKeyCancel');
+        const bd  = document.getElementById('deleteKeyBackdrop');
+
+        ln.textContent = (it.stamping||'') + ' – ' + (it.description||'');
+        m.hidden = false;
+
+        function closeDel(){
+          m.hidden = true;
+          go.onclick = null;
+          no.onclick = null;
+          bd.onclick = null;
+        }
+
+        no.onclick = closeDel;
+        bd.onclick = closeDel;
+
+        go.onclick = ()=>{
+          _currentSystem.keys.splice(selectedIdx,1);
+          persistCurrentSystem();
+          closeDel();
+          renderKeysView();
+        };
       };
+
     }
+
+
+
 
     // --- Key Editor Modal helpers ---
     function openKeyModal(model){
