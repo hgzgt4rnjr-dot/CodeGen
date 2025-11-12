@@ -83,11 +83,82 @@
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <!-- Main Screen -->
+  <div id="mainScreen"
+       style="display:flex;flex-direction:column;justify-content:center;align-items:center;
+              height:100vh;text-align:center;background:#000;">
+    <h1 style="font-size:38px;margin-bottom:40px;color:#00ff90;font-weight:700;">
+      Welcome to CodeGen V5
+    </h1>
+
+    <div style="display:flex;flex-direction:column;gap:16px;width:200px;">
+      <button id="goCreate"
+              class="primary"
+              style="padding:14px 20px;font-size:17px;border-radius:14px;font-weight:600;">
+        Create System
+      </button>
+      <button id="goLoad"
+              style="background:#111;border:1px solid #333;color:#e0e0e0;
+                     padding:14px 20px;font-size:17px;border-radius:14px;">
+        Load System
+      </button>
+    </div>
+
+    <footer style="position:absolute;bottom:20px;color:#666;font-size:13px;">
+      © 2025 CodeGen Systems
+    </footer>
+  </div>
+
+  <!-- Load Screen -->
+  <div id="loadScreen" class="wrap" style="display:none;min-height:100vh;flex-direction:column;">
+    <h1>Load System</h1>
+
+    <div id="loadList"
+         class="card"
+         style="flex:1 1 auto;overflow:auto;padding:0;display:flex;flex-direction:column;">
+      <!-- rows rendered by JS -->
+    </div>
+
+    <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:12px;">
+      <button id="returnMainFromLoad">Return to Main</button>
+      <button id="openSystem" class="primary" disabled>Open System</button>
+    </div>
+  </div>
+
+  <!-- System Screen -->
+  <div id="systemScreen" class="wrap" style="display:none;min-height:100vh;">
+    <h1>
+      <span id="sysViewId" style="font-weight:700;letter-spacing:.5px;"></span>
+      <span style="color:#888;margin:0 6px;">–</span>
+      <span id="sysViewDesc" class="muted" style="font-size:18px;"></span>
+    </h1>
+
+
+    <div class="card" style="margin-top:8px;">
+      <div class="inline" style="justify-content:space-between; width:100%; flex-wrap:wrap; gap:10px;">
+        <div class="btnbar" style="margin-top:0">
+          <button id="btnSysKeys">Keys</button>
+          <button id="btnSysDoors">Doors</button>
+          <button id="btnSysTree">Coding Tree</button>
+          <button id="btnSysNotes">System Notes</button>
+          <button id="btnSysClose">Close System</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="systemContent" class="card" style="min-height:120px;">
+      <div class="muted">Choose an option above.</div>
+    </div>
+  </div>
+
+  <!-- Create Screen -->
+  <div id="createScreen" class="wrap" style="display:none">
     <h1>Create System <span class="tag">TMK → MK → CK</span></h1>
+
 
     <div class="card">
       <div class="row">
+
         <div>
           <label for="tmk">TMK (digits, e.g. 53142). Tap R5/R6 to auto-generate.</label>
           <input id="tmk" type="text" inputmode="numeric" placeholder="Enter TMK like 53142">
@@ -117,7 +188,8 @@
       <div id="out" class="out" aria-live="polite">Enter TMK + Array, then press “Build Coding Tree”.</div>
       <div class="btnbar">
         <button id="copy">Copy</button>
-        <button id="download">Download CSV</button>
+        <button id="saveSystem">Save System</button>
+        <button id="returnMain">Return to Main</button>
         <span class="hint">MKs in cyan, CKs in white, errors in red.</span>
       </div>
       <div class="footer">Rules enforced: Maximum Adjacent Cut &gt; 7 (MAC), Deepest First Cut ≥ 8 (DFC) and Minimum Code Variation ≥ 3 (MCV). Depth Step of Two.</div>
@@ -183,6 +255,29 @@
       </div>
     </div>
   </div>
+
+  <!-- Save System Modal -->
+  <div id="saveModal" class="modal" hidden>
+    <div class="backdrop" id="saveBackdrop"></div>
+    <div class="dialog">
+      <h3>Save System</h3>
+      <div class="row">
+        <div>
+          <label for="sysNumber">System Number</label>
+          <input id="sysNumber" type="text" placeholder="SYS0001">
+        </div>
+        <div>
+          <label for="sysDescription">System Description</label>
+          <input id="sysDescription" type="text" placeholder="e.g. North Wing – 5-pin">
+        </div>
+      </div>
+      <div class="btnbar" style="justify-content:flex-end">
+        <button id="saveCancel">Cancel</button>
+        <button class="primary" id="saveOk">OK</button>
+      </div>
+    </div>
+  </div>
+
 
 
 
@@ -665,10 +760,15 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       printLines(lines);
       statsEl.textContent = `TMK ${tmk.length} Pin · MKs ${mkCount} · CK ${ckTotal} · Errors ${errorCount}`;
 
-      // stash for copy/download
+      // stash for copy/save
       window._lastCSV = toCSV(csvRows);
       window._lastText = lines.join('\n');
+      window._lastRows = csvRows;
+      window._lastTMK = tmk;
+      window._lastArray = arrNorm;
+      window._lastStats = { mkCount, ckTotal, errorCount, pins: tmk.length };
     };
+
 
 
 
@@ -688,20 +788,251 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       }
     };
 
-    $('#download').onclick = ()=>{
-      if (!window._lastCSV){ alert('Build first.'); return; }
-      const blob = new Blob([window._lastCSV],{type:'text/csv'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'coding_tree.csv';
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
+    // Save System flow
+    $('#saveSystem').onclick = ()=>{
+      if (!window._lastText || !window._lastRows){ alert('Build first.'); return; }
+      const { nextId } = getNextSystemId();
+      document.getElementById('sysNumber').value = nextId;   // auto-fill (editable)
+      document.getElementById('sysDescription').value = '';  // user can type anything
+      openSaveModal();
     };
+
+
 
     // Keep offline functionality
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(console.error);
     }
+
+    // ---- Save System (modal + storage) ----
+    function openSaveModal(){ document.getElementById('saveModal').hidden = false; }
+    function closeSaveModal(){ document.getElementById('saveModal').hidden = true; }
+
+    // iOS Safari bookmark/PWA: localStorage persists in standalone mode.
+    function getSystems(){
+      try {
+        const raw = localStorage.getItem('codegen_systems');
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+      } catch {
+        return [];
+      }
+    }
+    function setSystems(list){
+      localStorage.setItem('codegen_systems', JSON.stringify(list || []));
+    }
+    function getNextSystemId(){
+      const systems = getSystems();
+      let max = 0;
+      for (const s of systems){
+        const m = /^SYS(\d{4})$/.exec(s && s.id ? s.id : '');
+        if (m) max = Math.max(max, parseInt(m[1],10));
+      }
+      const nextNum = max + 1;
+      const nextId = 'SYS' + String(nextNum).padStart(4,'0');
+      return { nextId, nextNum };
+    }
+
+    // Modal wiring
+    document.getElementById('saveBackdrop').onclick = closeSaveModal;
+    document.getElementById('saveCancel').onclick = closeSaveModal;
+    document.getElementById('saveOk').onclick = ()=>{
+      const id = (document.getElementById('sysNumber').value || '').trim() || getNextSystemId().nextId;
+      const description = (document.getElementById('sysDescription').value || '').trim();
+
+      // Build object to persist (rich JSON)
+      const system = {
+        id,
+        description,
+        tmk: window._lastTMK,
+        array: window._lastArray,
+        stats: window._lastStats,
+        lines: window._lastText ? window._lastText.split('\n') : [],
+        rows: window._lastRows || []
+      };
+
+      // Upsert into localStorage
+      const systems = getSystems();
+      const idx = systems.findIndex(s => s.id === id);
+      if (idx >= 0) systems[idx] = system; else systems.push(system);
+      setSystems(systems);
+
+      // Confirm then return to Main Menu
+      closeSaveModal();
+      alert('System Saved.');
+      // clear the Create screen
+      document.getElementById('clear').click();
+      const mainScreen = document.getElementById('mainScreen');
+      const createScreen = document.getElementById('createScreen');
+      createScreen.style.display = 'none';
+      mainScreen.style.display = 'flex';
+      window.scrollTo(0,0);
+    };
+
+
+    // ---- Screen Navigation ----
+    const mainScreen   = document.getElementById('mainScreen');
+    const createScreen = document.getElementById('createScreen');
+    const loadScreen   = document.getElementById('loadScreen');
+    const systemScreen = document.getElementById('systemScreen');
+    const loadListEl   = document.getElementById('loadList');
+    const openBtn      = document.getElementById('openSystem');
+
+    // system header els
+    const sysViewId   = document.getElementById('sysViewId');
+    const sysViewDesc = document.getElementById('sysViewDesc');
+    let _selectedId = null;
+    let _currentSystem = null;
+
+
+    function showMain(){
+      mainScreen.style.display   = 'flex';
+      createScreen.style.display = 'none';
+      loadScreen.style.display   = 'none';
+      window.scrollTo(0,0);
+    }
+    function showCreate(){
+      mainScreen.style.display   = 'none';
+      createScreen.style.display = 'block';
+      loadScreen.style.display   = 'none';
+      window.scrollTo(0,0);
+    }
+    function showLoad(){
+      mainScreen.style.display   = 'none';
+      createScreen.style.display = 'none';
+      systemScreen.style.display = 'none';
+      loadScreen.style.display   = 'flex';
+      renderLoadList();
+      window.scrollTo(0,0);
+    }
+
+    function showSystem(){
+      mainScreen.style.display   = 'none';
+      createScreen.style.display = 'none';
+      loadScreen.style.display   = 'none';
+      systemScreen.style.display = 'block';
+      window.scrollTo(0,0);
+    }
+
+
+    // Main buttons
+    document.getElementById('goCreate').onclick = showCreate;
+    document.getElementById('goLoad').onclick = showLoad;
+    document.getElementById('returnMain').onclick = () => {
+      document.getElementById('clear').click(); // clear the Create screen
+      showMain();
+    };
+
+
+    // Load screen buttons
+    document.getElementById('returnMainFromLoad').onclick = showMain;
+
+    // System screen buttons
+    (function(){
+      const btnClose = document.getElementById('btnSysClose');
+      const btnKeys  = document.getElementById('btnSysKeys');
+      const btnDoors = document.getElementById('btnSysDoors');
+      const btnTree  = document.getElementById('btnSysTree');
+      const btnNotes = document.getElementById('btnSysNotes');
+      const content  = document.getElementById('systemContent');
+
+      if (btnClose) btnClose.onclick = () => {
+        _currentSystem = null;
+        showLoad();
+      };
+
+      // Simple placeholders for now
+      if (btnKeys)  btnKeys.onclick  = ()=>{ if (content) content.innerHTML = '<div>Keys view (coming soon)</div>'; };
+      if (btnDoors) btnDoors.onclick = ()=>{ if (content) content.innerHTML = '<div>Doors view (coming soon)</div>'; };
+      if (btnTree)  btnTree.onclick  = ()=>{
+        if (!_currentSystem || !content) return;
+        const pre = document.createElement('pre');
+        pre.className = 'out';
+        pre.textContent = (_currentSystem.lines || []).join('\n');
+        content.innerHTML = '';
+        content.appendChild(pre);
+      };
+      if (btnNotes) btnNotes.onclick = ()=>{ if (content) content.innerHTML = '<div>System Notes (coming soon)</div>'; };
+    })();
+
+
+    // Build the load list from local storage
+    function renderLoadList(){
+      _selectedId = null;
+      openBtn.disabled = true;
+
+      const systems = getSystems();  // uses the helpers from the Save step
+      if (!systems.length){
+        loadListEl.innerHTML =
+          '<div style="padding:16px;color:#aaa">No saved systems found.</div>';
+        return;
+      }
+
+      loadListEl.innerHTML = '';
+      systems.forEach((s, idx)=>{
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.style.cssText =
+          'display:flex;justify-content:space-between;align-items:center;width:100%;' +
+          'background:#0e0e0e;border:0;border-bottom:1px solid #1e1e1e;color:inherit;' +
+          'padding:14px 16px;text-align:left;cursor:pointer';
+
+        const left = document.createElement('div');
+        left.innerHTML =
+          `<div style="font-weight:600;letter-spacing:0.5px">${(s.id||'')}</div>` +
+          `<div style="color:#9aa; font-size:13px; margin-top:2px">${((s.description||'')+'').replace(/</g,'&lt;')}</div>`;
+
+        const right = document.createElement('div');
+        right.style.cssText = 'font-size:12px;color:#8a8a8a';
+        right.textContent = (s.stats && s.stats.pins) ? `${s.stats.pins}-pin` : '';
+
+        row.appendChild(left);
+        row.appendChild(right);
+
+        row.onclick = ()=>{
+          // clear previous selection visuals
+          [...loadListEl.children].forEach(el=>{
+            el.style.borderLeft = '0';
+            el.style.background = '#0e0e0e';
+          });
+          // highlight this one
+          row.style.borderLeft = '3px solid var(--accent)';
+          row.style.background = '#0b0b0b';
+          _selectedId = s.id;
+          openBtn.disabled = false;
+        };
+
+        // rounding on first/last
+        if (idx === 0) row.style.borderTopLeftRadius = row.style.borderTopRightRadius = '12px';
+        if (idx === systems.length-1){
+          row.style.borderBottom = '0';
+          row.style.borderBottomLeftRadius = row.style.borderBottomRightRadius = '12px';
+        }
+
+        loadListEl.appendChild(row);
+      });
+    }
+
+    // Open selected system into its own System screen
+    openBtn.onclick = ()=>{
+      if (!_selectedId) return;
+      const systems = getSystems();
+      const sys = systems.find(x => x.id === _selectedId);
+      if (!sys) return;
+
+      _currentSystem = sys; // stash current
+      if (sysViewId)   sysViewId.textContent = sys.id || '';
+      if (sysViewDesc) sysViewDesc.textContent = sys.description || '';
+
+      // default content view
+      const content = document.getElementById('systemContent');
+      if (content) content.innerHTML = '<div class="muted">Choose an option above.</div>';
+
+      showSystem();
+    };
+
+
+
   </script>
 </body>
 </html>
