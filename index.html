@@ -102,7 +102,13 @@
                      padding:14px 20px;font-size:17px;border-radius:14px;">
         Load System
       </button>
+      <button id="goManager"
+              style="background:#111;border:1px solid #333;color:#e0e0e0;
+                     padding:14px 20px;font-size:17px;border-radius:14px;">
+        System Manager
+      </button>
     </div>
+
 
     <footer style="position:absolute;bottom:20px;color:#666;font-size:13px;">
       © 2025 CodeGen Systems
@@ -125,6 +131,25 @@
     </div>
   </div>
 
+
+  <!-- System Manager Screen -->
+  <div id="managerScreen" class="wrap" style="display:none;min-height:100vh;flex-direction:column;">
+    <h1>System Manager</h1>
+
+    <div id="managerList"
+         class="card"
+         style="flex:1 1 auto;overflow:auto;padding:0;display:flex;flex-direction:column;">
+      <!-- rows rendered by JS -->
+    </div>
+
+    <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:12px;">
+      <button id="btnImport">Import Systems</button>
+      <button id="btnBackup">Create Backup</button>
+      <button id="btnDelete" class="warn">Delete System</button>
+      <button id="returnMainFromManager" class="primary">Return to Main</button>
+    </div>
+  </div>
+
   <!-- System Screen -->
   <div id="systemScreen" class="wrap" style="display:none;min-height:100vh;">
     <h1>
@@ -132,6 +157,7 @@
       <span style="color:#888;margin:0 6px;">–</span>
       <span id="sysViewDesc" class="muted" style="font-size:18px;"></span>
     </h1>
+
 
 
     <div class="card" style="margin-top:8px;">
@@ -277,6 +303,21 @@
       </div>
     </div>
   </div>
+
+  <!-- Confirm Delete Modal -->
+  <div id="confirmDeleteModal" class="modal" hidden>
+    <div class="backdrop" id="confirmDeleteBackdrop"></div>
+    <div class="dialog">
+      <h3>Are you sure you want to delete system?</h3>
+      <div id="confirmDeleteLine" class="muted" style="margin:8px 0 12px 0;"></div>
+      <div class="btnbar" style="justify-content:flex-end">
+        <button id="confirmDeleteCancel">Cancel</button>
+        <button id="confirmDeleteGo" class="warn">Confirm Delete</button>
+      </div>
+    </div>
+  </div>
+
+
 
 
 
@@ -871,61 +912,90 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
 
     // ---- Screen Navigation ----
-    const mainScreen   = document.getElementById('mainScreen');
-    const createScreen = document.getElementById('createScreen');
-    const loadScreen   = document.getElementById('loadScreen');
-    const systemScreen = document.getElementById('systemScreen');
-    const loadListEl   = document.getElementById('loadList');
-    const openBtn      = document.getElementById('openSystem');
+    const mainScreen    = document.getElementById('mainScreen');
+    const createScreen  = document.getElementById('createScreen');
+    const loadScreen    = document.getElementById('loadScreen');
+    const systemScreen  = document.getElementById('systemScreen');
+    const managerScreen = document.getElementById('managerScreen');
+
+    const loadListEl    = document.getElementById('loadList');
+    const openBtn       = document.getElementById('openSystem');
+    const managerListEl = document.getElementById('managerList');
 
     // system header els
     const sysViewId   = document.getElementById('sysViewId');
     const sysViewDesc = document.getElementById('sysViewDesc');
-    let _selectedId = null;
+
+    let _selectedId = null;           // Load screen selection
+    let _managerSelectedId = null;    // Manager screen selection
     let _currentSystem = null;
 
 
+
     function showMain(){
-      mainScreen.style.display   = 'flex';
-      createScreen.style.display = 'none';
-      loadScreen.style.display   = 'none';
+      mainScreen.style.display    = 'flex';
+      createScreen.style.display  = 'none';
+      loadScreen.style.display    = 'none';
+      systemScreen.style.display  = 'none';
+      managerScreen.style.display = 'none';
       window.scrollTo(0,0);
     }
     function showCreate(){
-      mainScreen.style.display   = 'none';
-      createScreen.style.display = 'block';
-      loadScreen.style.display   = 'none';
+      mainScreen.style.display    = 'none';
+      createScreen.style.display  = 'block';
+      loadScreen.style.display    = 'none';
+      systemScreen.style.display  = 'none';
+      managerScreen.style.display = 'none';
       window.scrollTo(0,0);
     }
     function showLoad(){
-      mainScreen.style.display   = 'none';
-      createScreen.style.display = 'none';
-      systemScreen.style.display = 'none';
-      loadScreen.style.display   = 'flex';
+      mainScreen.style.display    = 'none';
+      createScreen.style.display  = 'none';
+      systemScreen.style.display  = 'none';
+      managerScreen.style.display = 'none';
+      loadScreen.style.display    = 'flex';
       renderLoadList();
       window.scrollTo(0,0);
     }
 
+    function showManager(){
+      mainScreen.style.display    = 'none';
+      createScreen.style.display  = 'none';
+      loadScreen.style.display    = 'none';
+      systemScreen.style.display  = 'none';
+      managerScreen.style.display = 'flex';
+      renderManagerList();
+      window.scrollTo(0,0);
+    }
+
     function showSystem(){
-      mainScreen.style.display   = 'none';
-      createScreen.style.display = 'none';
-      loadScreen.style.display   = 'none';
-      systemScreen.style.display = 'block';
+      mainScreen.style.display    = 'none';
+      createScreen.style.display  = 'none';
+      loadScreen.style.display    = 'none';
+      managerScreen.style.display = 'none';
+      systemScreen.style.display  = 'block';
       window.scrollTo(0,0);
     }
 
 
+
     // Main buttons
-    document.getElementById('goCreate').onclick = showCreate;
-    document.getElementById('goLoad').onclick = showLoad;
+    document.getElementById('goCreate').onclick  = showCreate;
+    document.getElementById('goLoad').onclick    = showLoad;
+    document.getElementById('goManager').onclick = showManager;
     document.getElementById('returnMain').onclick = () => {
       document.getElementById('clear').click(); // clear the Create screen
       showMain();
     };
 
-
     // Load screen buttons
     document.getElementById('returnMainFromLoad').onclick = showMain;
+
+    // Manager screen buttons
+    document.getElementById('returnMainFromManager').onclick = showMain;
+    document.getElementById('btnImport').onclick = ()=>{/* placeholder */};
+    document.getElementById('btnBackup').onclick = ()=>{/* placeholder */};
+
 
     // System screen buttons
     (function(){
@@ -1012,6 +1082,104 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         loadListEl.appendChild(row);
       });
     }
+    // System Manager: render list
+    // System Manager: render list
+    function renderManagerList(){
+      _managerSelectedId = null;
+
+      const systems = getSystems();
+      if (!systems.length){
+        managerListEl.innerHTML =
+          '<div style="padding:16px;color:#aaa">No saved systems found.</div>';
+        return;
+      }
+
+      managerListEl.innerHTML = '';
+      systems.forEach((s, idx)=>{
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.style.cssText =
+          'display:flex;justify-content:space-between;align-items:center;width:100%;' +
+          'background:#0e0e0e;border:0;border-bottom:1px solid #1e1e1e;color:inherit;' +
+          'padding:14px 16px;text-align:left;cursor:pointer';
+
+        const left = document.createElement('div');
+        left.innerHTML =
+          `<div style="font-weight:600;letter-spacing:0.5px">${(s.id||'')}</div>` +
+          `<div style="color:#9aa; font-size:13px; margin-top:2px">${((s.description||'')+'').replace(/</g,'&lt;')}</div>`;
+
+        const right = document.createElement('div');
+        right.style.cssText = 'font-size:12px;color:#8a8a8a';
+        right.textContent = (s.stats && s.stats.pins) ? `${s.stats.pins}-pin` : '';
+
+        row.appendChild(left);
+        row.appendChild(right);
+
+        row.onclick = ()=>{
+          [...managerListEl.children].forEach(el=>{
+            el.style.borderLeft = '0';
+            el.style.background = '#0e0e0e';
+          });
+          row.style.borderLeft = '3px solid var(--accent)';
+          row.style.background = '#0b0b0b';
+          _managerSelectedId = s.id;
+        };
+
+        if (idx === 0) row.style.borderTopLeftRadius = row.style.borderTopRightRadius = '12px';
+        if (idx === systems.length-1){
+          row.style.borderBottom = '0';
+          row.style.borderBottomLeftRadius = row.style.borderBottomRightRadius = '12px';
+        }
+
+        managerListEl.appendChild(row);
+      });
+
+      // ---- Delete button + confirm modal wiring ----
+      const confirmDeleteModal    = document.getElementById('confirmDeleteModal');
+      const confirmDeleteBackdrop = document.getElementById('confirmDeleteBackdrop');
+      const confirmDeleteLine     = document.getElementById('confirmDeleteLine');
+      const confirmDeleteGo       = document.getElementById('confirmDeleteGo');
+      const confirmDeleteCancel   = document.getElementById('confirmDeleteCancel');
+      const btnDelete             = document.getElementById('btnDelete');
+
+      function openConfirmDelete(id, desc){
+        confirmDeleteLine.textContent = `${id} - ${desc || ''}`;
+        confirmDeleteModal.hidden = false;
+      }
+      function closeConfirmDelete(){
+        confirmDeleteModal.hidden = true;
+      }
+
+      confirmDeleteBackdrop.onclick = closeConfirmDelete;
+      confirmDeleteCancel.onclick   = ()=>{ closeConfirmDelete(); };
+
+      confirmDeleteGo.onclick = ()=>{
+        const systemsNow = getSystems();
+        const idx = systemsNow.findIndex(s => s.id === _managerSelectedId);
+        if (idx >= 0){
+          systemsNow.splice(idx,1);
+          setSystems(systemsNow);
+        }
+        closeConfirmDelete();
+        renderManagerList(); // refresh here, stay on manager
+      };
+
+      btnDelete.onclick = ()=>{
+        if (!_managerSelectedId){
+          alert('Select a system to delete.');
+          return;
+        }
+        const sys = getSystems().find(x=>x.id===_managerSelectedId);
+        if (!sys){ return; }
+        openConfirmDelete(sys.id, sys.description || '');
+      };
+    }
+
+
+    
+    
+    
+
 
     // Open selected system into its own System screen
     openBtn.onclick = ()=>{
