@@ -507,7 +507,7 @@
       <div class="row" style="margin-top:6px;">
         <div>
           <label for="cutQty">Quantity</label>
-          <input id="cutQty" type="number" inputmode="numeric" min="1" step="1" placeholder="1">
+          <input id="cutQty" type="number" inputmode="numeric" min="1" step="1">
         </div>
       </div>
       <div class="btnbar" style="justify-content:flex-end">
@@ -596,7 +596,7 @@
       <h3>Pinning</h3>
       <div id="pinningChart" class="out" style="margin-top:8px; overflow:auto;"></div>
       <div style="margin-top:12px;">
-        <div class="muted" style="margin-bottom:6px;">Keys operating this lock</div>
+        <div class="muted" style="margin-bottom:6px;">Keys operating this door</div>
         <div id="pinningKeysList" style="max-height:30vh; overflow:auto; padding:0; border:0; background:transparent; text-align:left;"></div>
       </div>
       <div class="btnbar" style="justify-content:flex-end; margin-top:12px;">
@@ -1789,7 +1789,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       }
 
       if (!chamberCount){
-        chart.innerHTML = `<div class="muted">No numeric key codes found among assigned keys. Pinning cannot be calculated.</div>`;
+        chart.innerHTML = `<div class="muted">Please add keys to this door first.</div>`;
         wirePinningClose();
         modal.hidden = false;
         return;
