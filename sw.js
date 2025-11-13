@@ -1,4 +1,4 @@
-const CACHE = "codegen-v3"; // bump version so browsers pick up the new SW
+const CACHE = "codegen-v4"; // bump version so browsers pick up the new SW
 
 // Everything your app needs to run completely offline.
 // Make sure these files exist next to index.html.
@@ -7,8 +7,6 @@ const ASSETS = [
   "./index.html",
   "./manifest.webmanifest",
   "./sw.js",
-  "./icon-192.png",
-  "./icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
