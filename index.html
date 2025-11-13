@@ -320,13 +320,13 @@
       <div class="row">
 
         <div>
-          <label for="tmk">TMK (digits, e.g. 53142). Tap R5/R6 to auto-generate.</label>
-          <input id="tmk" type="text" inputmode="numeric" placeholder="Enter TMK like 53142">
+          <label for="tmk" style="font-size:16px;font-weight:600;color:#ffffff;">TMK</label>
+          <input id="tmk" type="text" inputmode="numeric" placeholder="Example: 53142">
         </div>
         <div>
-          <label for="array">Array (same length as TMK; use M/C/0 per position)</label>
+          <label for="array" style="font-size:16px;font-weight:600;color:#ffffff;">Array</label>
           <input id="array" type="text" placeholder="Example: M00MC">
-          <div class="hint">Each character: <b>M</b>=Master Key, <b>C</b>=Change Key, <b>0</b>=Empty. Length must equal TMK.</div>
+          <div class="hint"><b>M</b>=Master Key, <b>C</b>=Change Key, <b>0</b>=Empty</div>
         </div>
       </div>
 
@@ -345,12 +345,12 @@
         <strong>Output</strong>
         <span class="tag" id="stats">—</span>
       </div>
-      <div id="out" class="out" aria-live="polite">Enter TMK + Array, then press “Build Coding Tree”.</div>
+      <div id="out" class="out" aria-live="polite"></div>
       <div class="btnbar">
         <button id="copy">Copy</button>
-        <button id="saveSystem">Save System</button>
         <button id="returnMain">Return to Main</button>
-        <span class="hint">MKs in cyan, CKs in white, errors in red.</span>
+        <button id="saveSystem" class="primary">Save System</button>
+        <button id="helpBtn">Help</button>
       </div>
       <div class="footer">Rules enforced: Maximum Adjacent Cut &gt; 7 (MAC), Deepest First Cut ≥ 8 (DFC) and Minimum Code Variation ≥ 3 (MCV). Depth Step of Two.</div>
     </div>
@@ -604,6 +604,31 @@
       </div>
     </div>
   </div>
+  
+  <!-- Save Confirmation Modal -->
+  <div id="saveConfirmModal" class="modal" hidden>
+    <div class="backdrop" id="saveConfirmBackdrop"></div>
+    <div class="dialog">
+      <h3>System Saved</h3>
+      <p class="muted">Your system has been saved.</p>
+      <div class="btnbar" style="justify-content:flex-end">
+        <button class="primary" id="saveConfirmOk">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help Modal -->
+  <div id="helpModal" class="modal" hidden>
+    <div class="backdrop" id="helpBackdrop"></div>
+    <div class="dialog">
+      <h3>Help</h3>
+      <p class="muted">To design a system manually enter TMK + Array and Tap Build Coding Tree. You can use R5 and R6 to auto generate the TMK either 5 Pin or 6 Pin. To design a system automatically use the Coding Assist Button and follow the prompts.</p>
+      <div class="btnbar" style="justify-content:flex-end">
+        <button id="helpClose">Close</button>
+      </div>
+    </div>
+  </div>
+
 
 
 
@@ -1187,16 +1212,11 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       if (idx >= 0) systems[idx] = system; else systems.push(system);
       setSystems(systems);
 
-      // Confirm then return to Main Menu
       closeSaveModal();
-      alert('System Saved.');
-      // clear the Create screen
-      document.getElementById('clear').click();
-      const mainScreen = document.getElementById('mainScreen');
-      const createScreen = document.getElementById('createScreen');
-      createScreen.style.display = 'none';
-      mainScreen.style.display = 'flex';
-      window.scrollTo(0,0);
+      // open UI confirmation window
+      document.getElementById('saveConfirmModal').hidden = false;
+      document.getElementById('saveConfirmBackdrop').hidden = false;
+
     };
 
 
@@ -1276,6 +1296,55 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
       window.scrollTo(0,0);
     }
+    // --- Save Confirm Modal ---
+    (function(){
+      const modal = document.getElementById('saveConfirmModal');
+      const bd    = document.getElementById('saveConfirmBackdrop');
+      const ok    = document.getElementById('saveConfirmOk');
+
+      function closeConfirm(){
+        modal.hidden = true;
+        bd.hidden = true;
+        document.getElementById('clear').click();
+        showMain();
+      }
+      if (bd) bd.onclick = closeConfirm;
+      if (ok) ok.onclick = closeConfirm;
+    })();
+
+    // --- Help Modal ---
+    (function(){
+      const btn   = document.getElementById('helpBtn');
+      const modal = document.getElementById('helpModal');
+      const bd    = document.getElementById('helpBackdrop');
+      const close = document.getElementById('helpClose');
+
+      if (btn) btn.onclick = ()=>{
+        modal.hidden = false;
+        bd.hidden = false;
+      };
+
+      if (bd)    bd.onclick   = ()=>{ modal.hidden = true; bd.hidden = true; };
+      if (close) close.onclick = ()=>{ modal.hidden = true; bd.hidden = true; };
+    })();
+
+
+    // --- Help Modal ---
+    (function(){
+      const btn   = document.getElementById('helpBtn');
+      const modal = document.getElementById('helpModal');
+      const bd    = document.getElementById('helpBackdrop');
+      const close = document.getElementById('helpClose');
+
+      if (btn) btn.onclick = ()=>{
+        modal.hidden = false;
+        bd.hidden = false;
+      };
+
+      if (bd)    bd.onclick   = ()=>{ modal.hidden = true; bd.hidden = true; };
+      if (close) close.onclick = ()=>{ modal.hidden = true; bd.hidden = true; };
+    })();
+
 
 
 
