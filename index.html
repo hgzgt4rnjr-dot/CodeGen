@@ -278,7 +278,7 @@
 
     <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:12px;">
       <button id="btnImport">Import Systems</button>
-      <button id="btnBackup">Create Backup</button>
+      <button id="btnBackup">Backup Systems</button>
       <button id="btnDelete" class="warn">Delete System</button>
       <button id="returnMainFromManager" class="primary">Return to Main</button>
     </div>
@@ -1363,8 +1363,103 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
     // Manager screen buttons
     document.getElementById('returnMainFromManager').onclick = showMain;
-    document.getElementById('btnImport').onclick = ()=>{/* placeholder */};
-    document.getElementById('btnBackup').onclick = ()=>{/* placeholder */};
+
+    // Import Systems (JSON or our "zip" JSON backups)
+    document.getElementById('btnImport').onclick = () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json,.zip,application/json';
+
+      input.onchange = (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const text = String(ev.target.result || '');
+            const parsed = JSON.parse(text);
+
+            let incoming = [];
+
+            // single system object
+            if (parsed && !Array.isArray(parsed) && parsed.id) {
+              incoming = [parsed];
+            }
+            // array of systems
+            else if (Array.isArray(parsed)) {
+              incoming = parsed;
+            }
+            // wrapped form: { systems: [...] }
+            else if (parsed && Array.isArray(parsed.systems)) {
+              incoming = parsed.systems;
+            }
+
+            if (!incoming.length) {
+              alert('No systems found in file.');
+              return;
+            }
+
+            const current = getSystems();
+            incoming.forEach(sys => {
+              if (!sys || !sys.id) return;
+              const idx = current.findIndex(s => s.id === sys.id);
+              if (idx >= 0) {
+                current[idx] = sys;   // update existing
+              } else {
+                current.push(sys);    // add new
+              }
+            });
+
+            setSystems(current);
+            renderManagerList();
+            alert(`Imported ${incoming.length} system(s).`);
+          } catch (err) {
+            console.error(err);
+            alert('Failed to import file. Make sure it is a JSON backup from this app.');
+          }
+        };
+
+        reader.readAsText(file);
+      };
+
+      input.click();
+    };
+
+    // Backup Systems (exports all systems into a single JSON-as-zip file)
+    document.getElementById('btnBackup').onclick = () => {
+      const systems = getSystems();
+      if (!systems.length) {
+        alert('No systems to backup.');
+        return;
+      }
+
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        count: systems.length,
+        systems
+      };
+
+      const blob = new Blob(
+        [JSON.stringify(payload, null, 2)],
+        { type: 'application/json' }
+      );
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      // use .zip extension so you can treat it as a "zip" backup
+      a.download = 'codegen_backup.zip';
+
+      document.body.appendChild(a);
+      a.click();
+
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
+    };
+
 
 
     // System screen buttons
@@ -1425,13 +1520,14 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
       content.innerHTML = `
         <div style="display:flex;flex-direction:column;gap:10px;">
-          <label class="muted">System Notes</label>
+          <label class="muted" style="font-size:16px; font-weight:600;">System Notes</label>
           <textarea id="systemNotesTA"
-            style="width:100%; min-height:40vh; resize:vertical; padding:12px; border:1px solid #1e1e1e; border-radius:12px; background:#0e0e0e; color:var(--fg);"
+            style="width:100%; min-height:40vh; resize:vertical; padding:12px; border:1px solid #1e1e1e; border-radius:12px; background:#0e0e0e; color:var(--fg); font-size:16px; line-height:1.5;"
             placeholder="Type your notes here...">${val.replace(/</g,'&lt;')}</textarea>
           <div class="muted" id="notesSaveHint" style="font-size:12px;">Changes are saved automatically</div>
         </div>
       `;
+
 
       const ta = document.getElementById('systemNotesTA');
       const hint = document.getElementById('notesSaveHint');
@@ -1491,13 +1587,14 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     // swap only the error message text for key stampings
     const html = htmlRaw
       .replace(/\b(MAC|DFC|MCV)\s*Error\b/g, "")
-      .replace(/(CK\d+\.\d+\s*-\s*\d+)/g, (m)=>{
+      .replace(/((?:GMK|MK\d+|CK\d+\.\d+)\s*-\s*\d+)/g, (m)=>{
         const codeMatch = m.match(/(\d{3,})$/);
         if (!codeMatch) return m;
         const code = codeMatch[1];
         const stamps = keyMap[code] ? `   ${keyMap[code].join(", ")}` : "";
         return m + stamps;
       });
+
 
     // render EXACTLY like Coding Only (same wrapper, no <pre>, no trimming)
     host.innerHTML = `<div>${html}</div>`;
@@ -1633,15 +1730,18 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         no.onclick = closeCut;
         bd.onclick = closeCut;
 
-        go.onclick = ()=>{
-          const v = Number(qty.value);
-          if (!Number.isFinite(v) || v <= 0) { closeCut(); return; }
-          ensureKeysArray();
-          _currentSystem.keys[selectedIdx].qty = (_currentSystem.keys[selectedIdx].qty||0) + Math.floor(v);
-          persistCurrentSystem();
-          closeCut();
-          renderKeysView();
-        };
+       go.onclick = ()=>{
+         const v = Number(qty.value);
+         if (!Number.isFinite(v)) { closeCut(); return; }
+         ensureKeysArray();
+         _currentSystem.keys[selectedIdx].qty =
+           (_currentSystem.keys[selectedIdx].qty||0) + Math.floor(v);
+         if (_currentSystem.keys[selectedIdx].qty < 0)
+           _currentSystem.keys[selectedIdx].qty = 0;
+         persistCurrentSystem();
+         closeCut();
+         renderKeysView();
+       };
       };
 
 
