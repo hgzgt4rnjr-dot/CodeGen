@@ -1,8 +1,8 @@
 {
   "name": "CodeGen",
   "short_name": "CodeGen",
-  "start_url": "/CodeGen/",
-  "scope": "/CodeGen/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#00ff90",
