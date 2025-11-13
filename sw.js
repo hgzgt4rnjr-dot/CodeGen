@@ -1,8 +1,14 @@
-const CACHE = "codegen-v2";  // bump version so browsers pick up the new SW
+const CACHE = "codegen-v3"; // bump version so browsers pick up the new SW
+
+// Everything your app needs to run completely offline.
+// Make sure these files exist next to index.html.
 const ASSETS = [
   "./",
   "./index.html",
-  "./manifest.webmanifest"
+  "./manifest.webmanifest",
+  "./sw.js",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
@@ -15,24 +21,45 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      Promise.all(
+        keys
+          .filter((key) => key !== CACHE)
+          .map((key) => caches.delete(key))
+      )
     )
   );
   self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
-  // For navigation requests (opening/refreshing the app),
-  // always try to serve the cached index.html first.
+  const url = new URL(event.request.url);
+
+  // Only handle GET requests to our own origin.
+  if (event.request.method !== "GET" || url.origin !== location.origin) {
+    return;
+  }
+
+  // For navigation (opening/refreshing/app from home screen),
+  // always give them the cached index.html and NEVER hit the network.
   if (event.request.mode === "navigate") {
     event.respondWith(
-      caches.match("./index.html").then((resp) => resp || fetch(event.request))
+      caches.match("./index.html").then((resp) => {
+        // index.html should always be cached after install
+        if (resp) return resp;
+        // Fallback to any cached root if things get weird
+        return caches.match("./");
+      })
     );
     return;
   }
 
-  // For everything else: cache-first, then network
+  // For everything else (icons, manifest, sw):
+  // serve from cache only, and if we somehow don't have it,
+  // fall back to index.html instead of ever going to the network.
   event.respondWith(
-    caches.match(event.request).then((resp) => resp || fetch(event.request))
+    caches.match(event.request).then((resp) => {
+      if (resp) return resp;
+      return caches.match("./index.html");
+    })
   );
 });
