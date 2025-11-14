@@ -2009,6 +2009,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     log.onDone(()=>{
       boxEl.textContent = '';
       boxEl.innerHTML = html;
+      boxEl.scrollTop = 0;
     });
   }
 
