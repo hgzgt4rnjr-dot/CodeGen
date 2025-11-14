@@ -1850,7 +1850,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     if (!boxEl || !_currentSystem) return;
 
     // slow logger (60ms delay per line — adjust as needed)
-    const log = createSlowLogger(boxEl, 40);
+    const log = createSlowLogger(boxEl, 20);
 
     const doors = Array.isArray(_currentSystem.doors) ? _currentSystem.doors : [];
     const keys  = Array.isArray(_currentSystem.keys)  ? _currentSystem.keys  : [];
