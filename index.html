@@ -196,7 +196,6 @@
     }
 
     
-        /* Pinning chart grid */
     .pinGrid {
       display:grid;
       grid-auto-rows:minmax(28px,auto);
@@ -212,6 +211,51 @@
       white-space:nowrap;
     }
     .pinHdr { font-weight:600; }
+
+    /* Keying grid table: lock door column + even key spacing + ellipsis */
+    .kgTable {
+      border-collapse:separate;  /* fix sticky-gap glitch */
+      border-spacing:0;
+      table-layout:fixed;        /* even column widths for keys */
+    }
+
+
+    /* Key headers (keys) – fixed width, no ellipsis */
+    .kgTable th:not(:first-child) {
+      max-width:70px;
+      min-width:70px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:clip;
+      text-align:center;
+    }
+
+
+    /* Key cells (checkbox column) – same width as headers */
+    .kgTable td:not(:first-child) {
+      width:70px;
+      text-align:center;
+    }
+
+    /* Lock first column (Doors \ Keys + door stampings) */
+    .kgTable th:first-child,
+    .kgTable td:first-child {
+      position:sticky;
+      left:0;
+      z-index:2;
+      background:#0e0e0e;  /* same as card bg so it blends */
+    }
+    .kgTable th:first-child {
+      z-index:3;           /* keep header above cells when scrolling */
+    }
+
+    /* Keying grid checkboxes – view mode (green + not clickable) */
+    .kgCB.viewmode {
+      pointer-events:none;       /* can’t click */
+      accent-color:var(--accent);
+      opacity:1;                 /* no grey fade */
+      cursor:default;
+    }
 
 
 
@@ -1498,8 +1542,8 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         // build grid table
         let html = '';
         html += `
-          <div style="overflow:auto; white-space:nowrap; padding:10px;">
-            <table class="kgTable" style="border-collapse:collapse;">
+          <div style="overflow:auto; white-space:nowrap;">
+            <table class="kgTable">
               <tr>
                 <th class="hdr muted" style="padding:6px 12px;">Doors \\ Keys</th>
                 ${keys.map(k=>`
@@ -1515,7 +1559,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
                     const id = `kg_${di}_${ki}`;
                     return `
                       <td style="text-align:center; padding:4px;">
-                        <input type="checkbox" id="${id}" data-di="${di}" data-ki="${ki}" ${assigned?'checked':''} disabled>
+                        <input type="checkbox" class="kgCB viewmode" id="${id}" data-di="${di}" data-ki="${ki}" ${assigned?'checked':''}>
                       </td>`;
                   }).join('')}
                 </tr>
@@ -1540,8 +1584,14 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         btnEdit.onclick = ()=>{
           editing = !editing;
 
-          const cbs = content.querySelectorAll('input[type=checkbox]');
-          cbs.forEach(cb=>cb.disabled = !editing);
+          const cbs = content.querySelectorAll('input.kgCB');
+          cbs.forEach(cb=>{
+            if (editing) {
+              cb.classList.remove('viewmode');  // edit mode: clickable, normal look
+            } else {
+              cb.classList.add('viewmode');     // view mode: green + locked
+            }
+          });
 
           if (editing){
             btnEdit.textContent = 'Save';
@@ -1551,7 +1601,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
             // SAVE CHANGES
             const newDoors = JSON.parse(JSON.stringify(_currentSystem.doors||[]));
 
-            const cbs2 = content.querySelectorAll('input[type=checkbox]');
+            const cbs2 = content.querySelectorAll('input.kgCB');
             cbs2.forEach(cb=>{
               const di = Number(cb.dataset.di);
               const ki = Number(cb.dataset.ki);
@@ -1576,6 +1626,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
             renderKeyingGrid(); // reload clean
           }
         };
+
 
         btnCancel.onclick = ()=>{
           editing = false;
@@ -1653,24 +1704,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       });
     }
     
-  // ---- Coding Tree sub-tabs renderer ----
-  // ---- Coding Tree sub-tabs renderer ----
-      // ---- Coding Tree main view: host + sub-tabs ----
-    function renderCodingTreeView(){
-      if (!_currentSystem) return;
-      const content = document.getElementById('systemContent');
-      if (!content) return;
 
-      content.innerHTML = `
-        <div class="btnbar" style="margin-bottom:10px;">
-          <button id="ctCodingOnly" class="subtabbtn active">Coding Only</button>
-          <button id="ctShowKeys" class="subtabbtn">Show Keys</button>
-        </div>
-        <div id="codingTreeHost" class="out" style="max-height:60vh; overflow:auto;"></div>
-      `;
-
-      renderCodingTreeUI("coding");
-    }
 
   // ---- Coding Tree main view (with sub-tabs) ----
   function renderCodingTreeView(){
@@ -1745,38 +1779,36 @@ ${pad(beforeLine2,22)}${afterLine2}`;
   }
 
   // ---- Coding Check view (Phantoms + Ghosts) ----
-  function renderCodingCheckView(){
-    if (!_currentSystem) return;
-    const content = document.getElementById('systemContent');
-    if (!content) return;
+    function renderCodingCheckView(){
+      if (!_currentSystem) return;
+      const content = document.getElementById('systemContent');
+      if (!content) return;
 
-    content.innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div class="muted" style="font-size:16px;font-weight:600;">Coding Check</div>
-        <div id="codingCheckLog" class="out" style="max-height:40vh;overflow:auto;"></div>
-        <div id="codingCheckResults" class="out" style="max-height:40vh;overflow:auto;margin-top:8px;"></div>
-        <div class="btnbar" style="justify-content:flex-end;margin-top:10px;">
-          <button id="codingCheckClear">Clear</button>
-          <button id="codingCheckRun" class="primary">Run</button>
+      content.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="muted" style="font-size:16px;font-weight:600;">Coding Check</div>
+          <div id="codingCheckBox" class="out" style="max-height:60vh;overflow:auto;"></div>
+          <div class="btnbar" style="justify-content:flex-end;margin-top:10px;">
+            <button id="codingCheckClear">Clear</button>
+            <button id="codingCheckRun" class="primary">Run</button>
+          </div>
         </div>
-      </div>
-    `;
+      `;
 
-    const logEl     = document.getElementById('codingCheckLog');
-    const resultsEl = document.getElementById('codingCheckResults');
-    const btnRun    = document.getElementById('codingCheckRun');
-    const btnClear  = document.getElementById('codingCheckClear');
+      const boxEl   = document.getElementById('codingCheckBox');
+      const btnRun  = document.getElementById('codingCheckRun');
+      const btnClear = document.getElementById('codingCheckClear');
 
-    if (btnClear) {
-      btnClear.onclick = ()=>{
-        if (logEl) logEl.textContent = '';
-        if (resultsEl) resultsEl.textContent = '';
-      };
+      if (btnClear && boxEl) {
+        btnClear.onclick = () => {
+          boxEl.textContent = '';
+        };
+      }
+      if (btnRun && boxEl) {
+        btnRun.onclick = () => runCodingCheck(boxEl);
+      }
     }
-    if (btnRun) {
-      btnRun.onclick = ()=>runCodingCheck(logEl, resultsEl);
-    }
-  }
+
     
     
     // Timed logger – slow typewriter-style prints
@@ -1814,16 +1846,11 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     
 
   // ---- Coding Check engine (find phantoms + ghosts) ----
-  function runCodingCheck(logEl, resultsEl){
-    if (!logEl || !resultsEl || !_currentSystem) return;
+  function runCodingCheck(boxEl){
+    if (!boxEl || !_currentSystem) return;
 
-    
-    
     // slow logger (60ms delay per line — adjust as needed)
-    const log = createSlowLogger(logEl, 40);
-    
-    
-
+    const log = createSlowLogger(boxEl, 40);
 
     const doors = Array.isArray(_currentSystem.doors) ? _currentSystem.doors : [];
     const keys  = Array.isArray(_currentSystem.keys)  ? _currentSystem.keys  : [];
@@ -1955,31 +1982,36 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     });
 
     // Build final results output and wipe debug log (per your spec)
+    const phantomCount = phantoms.length;
+    const ghostCount   = ghosts.length;
     let html = '';
 
-    html += `<div style="margin-bottom:10px;"><strong>Current Errors (Phantoms)</strong></div>`;
+    html += `<div style="margin-bottom:10px;font-size:16px;font-weight:600;">Current Errors (${phantomCount} Phantoms)</div>`;
     if (!phantoms.length){
       html += `<div class="muted">No phantom keys found.</div>`;
     } else {
       phantoms.forEach(p=>{
-        html += `<div>Key <strong>${p.stamp}</strong> (code ${p.code}) will open Door <strong>${p.door}</strong></div>`;
+        html += `<div class="err">Key <strong>${p.stamp}</strong> will open Door <strong>${p.door}</strong></div>`;
       });
     }
 
-    html += `<div style="margin-top:16px;margin-bottom:10px;"><strong>Future Errors (Ghosts)</strong></div>`;
+    html += `<div style="margin-top:16px;margin-bottom:10px;font-size:16px;font-weight:600;">Future Errors (${ghostCount} Ghosts)</div>`;
     if (!ghosts.length){
       html += `<div class="muted">No ghost codes found.</div>`;
     } else {
       ghosts.forEach(g=>{
-        html += `<div>Code <strong>${g.label}</strong> (code ${g.code}) will open Door <strong>${g.door}</strong></div>`;
+        html += `<div class="err">Code <strong>${g.label}</strong> will open Door <strong>${g.door}</strong></div>`;
       });
     }
 
+    // after the slow typing finishes, replace the log with the final summary
     log.onDone(()=>{
-      logEl.textContent = '';      // old prints disappear
-      resultsEl.innerHTML = html;  // show summary
+      boxEl.textContent = '';
+      boxEl.innerHTML = html;
     });
   }
+
+
 
 
 
