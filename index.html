@@ -308,10 +308,13 @@
           <button id="btnSysDoors" class="tabbtn">Doors</button>
           <button id="btnSysTree"  class="tabbtn">Coding Tree</button>
           <button id="btnSysNotes" class="tabbtn">Notes</button>
+          <button id="btnSysKeyingGrid" class="tabbtn">Keying</button>
+          <button id="btnSysCodingCheck" class="tabbtn">Coding Check</button>
           <button id="btnSysClose">Close System</button>
         </div>
       </div>
     </div>
+
 
     <div id="systemContent" class="card" style="min-height:120px;">
       <div class="muted">Choose an option above.</div>
@@ -1471,21 +1474,130 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
     // System screen buttons
     (function(){
-      const btnClose = document.getElementById('btnSysClose');
-      const btnKeys  = document.getElementById('btnSysKeys');
-      const btnDoors = document.getElementById('btnSysDoors');
-      const btnTree  = document.getElementById('btnSysTree');
-      const btnNotes = document.getElementById('btnSysNotes');
-      const content  = document.getElementById('systemContent');
+      const btnClose       = document.getElementById('btnSysClose');
+      const btnKeys        = document.getElementById('btnSysKeys');
+      const btnDoors       = document.getElementById('btnSysDoors');
+      const btnTree        = document.getElementById('btnSysTree');
+      const btnNotes       = document.getElementById('btnSysNotes');
+      const btnKeying      = document.getElementById('btnSysKeyingGrid');
+      const btnCodingCheck = document.getElementById('btnSysCodingCheck');
+      const content        = document.getElementById('systemContent');
+      
+      // ---- Keying Grid view (system-wide) ----
+      function renderKeyingGrid(){
+        if (!_currentSystem) return;
+        ensureDoorsArray();
+        ensureKeysArray();
+
+        const content = document.getElementById('systemContent');
+        if (!content) return;
+
+        const doors = _currentSystem.doors || [];
+        const keys  = _currentSystem.keys  || [];
+
+        // build grid table
+        let html = '';
+        html += `
+          <div style="overflow:auto; white-space:nowrap; padding:10px;">
+            <table class="kgTable" style="border-collapse:collapse;">
+              <tr>
+                <th class="hdr muted" style="padding:6px 12px;">Doors \\ Keys</th>
+                ${keys.map(k=>`
+                  <th class="hdr muted" style="padding:6px 12px;">${k.stamping||''}</th>
+                `).join('')}
+              </tr>
+
+              ${doors.map((d,di)=>`
+                <tr>
+                  <td class="hdr" style="padding:6px 12px;">${d.stamping||''}</td>
+                  ${keys.map((k,ki)=>{
+                    const assigned = (d.keys||[]).includes(k.stamping||'');
+                    const id = `kg_${di}_${ki}`;
+                    return `
+                      <td style="text-align:center; padding:4px;">
+                        <input type="checkbox" id="${id}" data-di="${di}" data-ki="${ki}" ${assigned?'checked':''} disabled>
+                      </td>`;
+                  }).join('')}
+                </tr>
+              `).join('')}
+            </table>
+          </div>
+          
+          <div class="btnbar" style="justify-content:flex-end;margin-top:12px;">
+            <button id="kgEdit" class="tabbtn">Edit</button>
+            <button id="kgCancel" disabled>Cancel</button>
+          </div>
+
+        `;
+
+        content.innerHTML = html;
+
+        const btnEdit   = document.getElementById('kgEdit');
+        const btnCancel = document.getElementById('kgCancel');
+
+        let editing = false;
+
+        btnEdit.onclick = ()=>{
+          editing = !editing;
+
+          const cbs = content.querySelectorAll('input[type=checkbox]');
+          cbs.forEach(cb=>cb.disabled = !editing);
+
+          if (editing){
+            btnEdit.textContent = 'Save';
+            btnEdit.classList.add('primary'); // use existing green theme
+            btnCancel.disabled = false;
+          } else {
+            // SAVE CHANGES
+            const newDoors = JSON.parse(JSON.stringify(_currentSystem.doors||[]));
+
+            const cbs2 = content.querySelectorAll('input[type=checkbox]');
+            cbs2.forEach(cb=>{
+              const di = Number(cb.dataset.di);
+              const ki = Number(cb.dataset.ki);
+              const stamp = keys[ki]?.stamping || '';
+              if (!newDoors[di].keys) newDoors[di].keys = [];
+
+              if (cb.checked){
+                if (!newDoors[di].keys.includes(stamp))
+                  newDoors[di].keys.push(stamp);
+              } else {
+                newDoors[di].keys = newDoors[di].keys.filter(s=>s!==stamp);
+              }
+            });
+
+            _currentSystem.doors = newDoors;
+            persistCurrentSystem();
+
+            btnEdit.textContent = 'Edit';
+            btnEdit.classList.remove('primary');
+            btnCancel.disabled = true;
+
+            renderKeyingGrid(); // reload clean
+          }
+        };
+
+        btnCancel.onclick = ()=>{
+          editing = false;
+          btnEdit.textContent = 'Edit';
+          btnEdit.classList.remove('primary');
+          btnCancel.disabled = true;
+          renderKeyingGrid(); // revert to original
+        };
+      }
+
 
       function setActiveTab(name){
         const map = {
-          keys : btnKeys,
-          doors: btnDoors,
-          tree : btnTree,
-          notes: btnNotes
+          keys   : btnKeys,
+          doors  : btnDoors,
+          tree   : btnTree,
+          notes  : btnNotes,
+          keying : btnKeying,
+          coding : btnCodingCheck
         };
-        [btnKeys, btnDoors, btnTree, btnNotes].forEach(b=>b && b.classList.remove('active'));
+        [btnKeys, btnDoors, btnTree, btnNotes, btnKeying, btnCodingCheck]
+          .forEach(b=>b && b.classList.remove('active'));
         if (map[name]) map[name].classList.add('active');
       }
 
@@ -1494,27 +1606,15 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         showLoad();
       };
 
-      if (btnKeys)  btnKeys.onclick  = ()=>{ renderKeysView();  setActiveTab('keys');  };
-      if (btnDoors) btnDoors.onclick = ()=>{ renderDoorsView(); setActiveTab('doors'); };
-  if (btnTree)  btnTree.onclick  = ()=>{
-    if (!_currentSystem || !content) return;
-
-    // sub-tab bar + container
-    content.innerHTML = `
-      <div class="btnbar" style="gap:8px; margin-bottom:10px;">
-        <button id="ctCodingOnly" class="subtabbtn">Coding Only</button>
-        <button id="ctShowKeys"   class="subtabbtn">Show Keys</button>
-      </div>
-      <div id="codingTreeHost" class="out"></div>
-    `;
-
-    // default = Show Keys
-    renderCodingTreeUI("keys");
-    setActiveTab("tree");
-  };
-
-      if (btnNotes) btnNotes.onclick = ()=>{ renderNotesView(); setActiveTab('notes'); };
+      if (btnKeys)        btnKeys.onclick        = ()=>{ renderKeysView();        setActiveTab('keys');   };
+      if (btnDoors)       btnDoors.onclick       = ()=>{ renderDoorsView();       setActiveTab('doors');  };
+      if (btnTree)        btnTree.onclick        = ()=>{ renderCodingTreeView();  setActiveTab('tree');   };
+      if (btnNotes)       btnNotes.onclick       = ()=>{ renderNotesView();       setActiveTab('notes');  };
+      if (btnKeying)      btnKeying.onclick      = ()=>{ renderKeyingGrid();      setActiveTab('keying'); };
+      if (btnCodingCheck) btnCodingCheck.onclick = ()=>{ renderCodingCheckView(); setActiveTab('coding'); };
     })();
+
+
 
 
     // ---- Notes view (editable, auto-save) ----
@@ -1555,62 +1655,333 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     
   // ---- Coding Tree sub-tabs renderer ----
   // ---- Coding Tree sub-tabs renderer ----
+      // ---- Coding Tree main view: host + sub-tabs ----
+    function renderCodingTreeView(){
+      if (!_currentSystem) return;
+      const content = document.getElementById('systemContent');
+      if (!content) return;
+
+      content.innerHTML = `
+        <div class="btnbar" style="margin-bottom:10px;">
+          <button id="ctCodingOnly" class="subtabbtn active">Coding Only</button>
+          <button id="ctShowKeys" class="subtabbtn">Show Keys</button>
+        </div>
+        <div id="codingTreeHost" class="out" style="max-height:60vh; overflow:auto;"></div>
+      `;
+
+      renderCodingTreeUI("coding");
+    }
+
+  // ---- Coding Tree main view (with sub-tabs) ----
+  function renderCodingTreeView(){
+    if (!_currentSystem) return;
+    const content = document.getElementById('systemContent');
+    if (!content) return;
+
+    content.innerHTML = `
+      <div class="btnbar" style="margin-bottom:10px;">
+        <button id="ctCodingOnly" class="subtabbtn active">Coding Only</button>
+        <button id="ctShowKeys" class="subtabbtn">Show Keys</button>
+      </div>
+      <div id="codingTreeHost" class="out" style="max-height:60vh; overflow:auto;"></div>
+    `;
+
+    renderCodingTreeUI('coding');
+  }
+
+  // ---- Coding Tree sub-tabs renderer ----
   function renderCodingTreeUI(mode){
-    const host = document.getElementById("codingTreeHost");
+    const host = document.getElementById('codingTreeHost');
     if (!host || !_currentSystem) return;
 
-    // highlight active toggle
-    const tabs = [document.getElementById("ctCodingOnly"), document.getElementById("ctShowKeys")];
-    tabs.forEach(b => b && b.classList.remove("active"));
-    if (mode === "coding") document.getElementById("ctCodingOnly")?.classList.add("active");
-    else document.getElementById("ctShowKeys")?.classList.add("active");
+    const btnCodingOnly = document.getElementById('ctCodingOnly');
+    const btnShowKeys   = document.getElementById('ctShowKeys');
 
-    // re-bind buttons
-    document.getElementById("ctCodingOnly").onclick = ()=>renderCodingTreeUI("coding");
-    document.getElementById("ctShowKeys").onclick   = ()=>renderCodingTreeUI("keys");
+    [btnCodingOnly, btnShowKeys].forEach(b => b && b.classList.remove('active'));
+    if (mode === 'coding') {
+      if (btnCodingOnly) btnCodingOnly.classList.add('active');
+    } else {
+      if (btnShowKeys) btnShowKeys.classList.add('active');
+    }
 
-    const lines = _currentSystem?.lines ? _currentSystem.lines.slice() : [];
-    if (mode === "coding"){
-      // normal rendering, unchanged
+    if (btnCodingOnly) btnCodingOnly.onclick = ()=>renderCodingTreeUI('coding');
+    if (btnShowKeys)   btnShowKeys.onclick   = ()=>renderCodingTreeUI('keys');
+
+    const lines = _currentSystem.lines ? _currentSystem.lines.slice() : [];
+
+    if (mode === 'coding'){
       host.innerHTML = `<div>${codingLinesToHTML(lines)}</div>`;
       return;
     }
 
     // --- Show Keys mode ---
     const keyMap = {};
-    (_currentSystem.keys||[]).forEach(k=>{
-      const c = String(k.code||"").trim();
-      const s = String(k.stamping||"").trim();
-      if(!c||!s) return;
-      if(!keyMap[c]) keyMap[c] = [];
+    (_currentSystem.keys || []).forEach(k=>{
+      const c = String(k.code||'').trim();
+      const s = String(k.stamping||'').trim();
+      if (!c || !s) return;
+      if (!keyMap[c]) keyMap[c] = [];
       keyMap[c].push(s);
     });
 
     // build from the SAME base HTML that Coding Only uses
-    const htmlRaw = (typeof codingLinesToHTML === "function")
+    const htmlRaw = (typeof codingLinesToHTML === 'function')
       ? codingLinesToHTML(lines)
-      : lines.join("\n");
+      : lines.join('\n');
 
     // swap only the error message text for key stampings
     const html = htmlRaw
-      .replace(/\b(MAC|DFC|MCV)\s*Error\b/g, "")
+      .replace(/\b(MAC|DFC|MCV)\s*Error\b/g, '')
       .replace(/((?:GMK|MK\d+|CK\d+\.\d+)\s*-\s*\d+)/g, (m)=>{
         const codeMatch = m.match(/(\d{3,})$/);
         if (!codeMatch) return m;
         const code = codeMatch[1];
-        const stamps = keyMap[code] ? `   ${keyMap[code].join(", ")}` : "";
+        const stamps = keyMap[code] ? `   ${keyMap[code].join(', ')}` : '';
         return m + stamps;
       });
 
-
     // render EXACTLY like Coding Only (same wrapper, no <pre>, no trimming)
     host.innerHTML = `<div>${html}</div>`;
-
-
-
-
-
   }
+
+  // ---- Coding Check view (Phantoms + Ghosts) ----
+  function renderCodingCheckView(){
+    if (!_currentSystem) return;
+    const content = document.getElementById('systemContent');
+    if (!content) return;
+
+    content.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="muted" style="font-size:16px;font-weight:600;">Coding Check</div>
+        <div id="codingCheckLog" class="out" style="max-height:40vh;overflow:auto;"></div>
+        <div id="codingCheckResults" class="out" style="max-height:40vh;overflow:auto;margin-top:8px;"></div>
+        <div class="btnbar" style="justify-content:flex-end;margin-top:10px;">
+          <button id="codingCheckClear">Clear</button>
+          <button id="codingCheckRun" class="primary">Run</button>
+        </div>
+      </div>
+    `;
+
+    const logEl     = document.getElementById('codingCheckLog');
+    const resultsEl = document.getElementById('codingCheckResults');
+    const btnRun    = document.getElementById('codingCheckRun');
+    const btnClear  = document.getElementById('codingCheckClear');
+
+    if (btnClear) {
+      btnClear.onclick = ()=>{
+        if (logEl) logEl.textContent = '';
+        if (resultsEl) resultsEl.textContent = '';
+      };
+    }
+    if (btnRun) {
+      btnRun.onclick = ()=>runCodingCheck(logEl, resultsEl);
+    }
+  }
+    
+    
+    // Timed logger – slow typewriter-style prints
+    function createSlowLogger(el, delay){
+      const queue = [];
+      let running = false;
+      let onDone = null;
+
+      function process(){
+        if (!queue.length){
+          running = false;
+          if (onDone) onDone();
+          return;
+        }
+        running = true;
+        const line = queue.shift();
+        el.textContent += (el.textContent ? "\n" : "") + line;
+        el.scrollTop = el.scrollHeight;
+        setTimeout(process, delay);
+      }
+
+      function slowLog(line){
+        queue.push(line);
+        if (!running) process();
+      }
+
+      slowLog.onDone = function(cb){
+        onDone = cb;
+      };
+
+      return slowLog;
+    }
+
+    
+    
+
+  // ---- Coding Check engine (find phantoms + ghosts) ----
+  function runCodingCheck(logEl, resultsEl){
+    if (!logEl || !resultsEl || !_currentSystem) return;
+
+    
+    
+    // slow logger (60ms delay per line — adjust as needed)
+    const log = createSlowLogger(logEl, 40);
+    
+    
+
+
+    const doors = Array.isArray(_currentSystem.doors) ? _currentSystem.doors : [];
+    const keys  = Array.isArray(_currentSystem.keys)  ? _currentSystem.keys  : [];
+
+    log('Starting Coding Check...');
+    log(`Doors: ${doors.length}, Keys: ${keys.length}`);
+
+    // map numeric code -> [key objs]
+    const keyByCode = {};
+    keys.forEach(k=>{
+      const codeDigits = String(k.code||'').replace(/\D/g,'');
+      if (!codeDigits) return;
+      if (!keyByCode[codeDigits]) keyByCode[codeDigits] = [];
+      keyByCode[codeDigits].push(k);
+    });
+
+    // map numeric code -> [labels] from coding tree (GMK/MK/CK)
+    const codeLabels = {};
+    const treeLines = _currentSystem.lines || [];
+    treeLines.forEach(line=>{
+      const raw = line.replace(/%c/g,'');
+      let label = '';
+      let code  = '';
+      if (/^GMK - /.test(raw)){
+        label = 'GMK';
+        code  = raw.split(' - ')[1] || '';
+      } else if (/^MK\d+/.test(raw)){
+        const parts = raw.split(' - ');
+        label = parts[0].trim();
+        code  = (parts[1]||'').split('  ')[0];
+      } else if (/^\s+CK\d+\.\d+/.test(raw)){
+        const parts = raw.trim().split(' - ');
+        label = parts[0].trim();
+        code  = (parts[1]||'').split('  ')[0];
+      }
+      const digits = String(code||'').replace(/\D/g,'');
+      if (!digits || !label) return;
+      if (!codeLabels[digits]) codeLabels[digits] = [];
+      codeLabels[digits].push(label);
+    });
+
+    const phantoms = [];
+    const ghosts   = [];
+
+    doors.forEach(door=>{
+      const doorStamp = String(door.stamping||'').trim() || '(no stamping)';
+      const assignedStamps = new Set(
+        Array.isArray(door.keys) ? door.keys.map(s=>String(s||'').trim()) : []
+      );
+
+      // keys assigned to THIS door (used to build pin stacks)
+      const usedKeys = keys.filter(k=>{
+        const st = String(k.stamping||'').trim();
+        return st && assignedStamps.has(st);
+      });
+
+      const codeLens = usedKeys
+        .map(k => String(k.code||'').replace(/\D/g,'').length)
+        .filter(n => n > 0);
+
+      if (!codeLens.length){
+        log(`Door ${doorStamp}: no assigned key codes, skipping.`);
+        return;
+      }
+
+      // chamber count = mode of code lengths
+      const chamberCount = (()=>{
+        const freq = new Map();
+        codeLens.forEach(n=>freq.set(n,(freq.get(n)||0)+1));
+        return Array.from(freq.entries()).sort((a,b)=>b[1]-a[1] || b[0]-a[0])[0][0];
+      })();
+
+      log(`Door ${doorStamp}: chamber count ${chamberCount}`);
+
+      // per-chamber unique sorted cuts (same logic as pinning)
+      const perChamberCuts = Array.from({length: chamberCount}, (_, ch)=>{
+        const cuts = [];
+        usedKeys.forEach(k=>{
+          const digits = String(k.code||'').replace(/\D/g,'');
+          if (digits.length !== chamberCount) return;
+          const d = parseInt(digits[ch],10);
+          if (!Number.isNaN(d)) cuts.push(d);
+        });
+        return Array.from(new Set(cuts)).sort((a,b)=>a-b);
+      });
+
+      // all combinations of valid cuts per chamber = all keys that will operate this door
+      const combos = [];
+      function buildCombo(prefix, idx){
+        if (idx >= chamberCount){
+          combos.push(prefix.join(''));
+          return;
+        }
+        const options = perChamberCuts[idx];
+        if (!options.length){
+          return;
+        }
+        options.forEach(d=>{
+          prefix.push(String(d));
+          buildCombo(prefix, idx+1);
+          prefix.pop();
+        });
+      }
+      buildCombo([],0);
+
+      log(`Door ${doorStamp}: checking ${combos.length} possible codes...`);
+
+      combos.forEach(code=>{
+        // PHANTOMS: existing keys with this code but NOT assigned to this door
+        const keysForCode = keyByCode[code] || [];
+        keysForCode.forEach(k=>{
+          const stamp = String(k.stamping||'').trim();
+          const assignedHere = stamp && assignedStamps.has(stamp);
+          log(`Door ${doorStamp} vs Key ${stamp || '(no stamping)'} [${code}] => ${assignedHere ? 'assigned' : 'PHANTOM'}`);
+          if (!assignedHere && stamp){
+            phantoms.push({ door: doorStamp, stamp, code });
+          }
+        });
+
+        // GHOSTS: codes that exist in coding tree but have NO key cut yet
+        const hasKeyCut = !!(keyByCode[code] && keyByCode[code].length);
+        const labels = codeLabels[code] || [];
+        if (!hasKeyCut && labels.length){
+          const label = labels[0]; // pick first label for message
+          log(`Door ${doorStamp} vs Code ${label} [${code}] => GHOST`);
+          ghosts.push({ door: doorStamp, label, code });
+        }
+      });
+    });
+
+    // Build final results output and wipe debug log (per your spec)
+    let html = '';
+
+    html += `<div style="margin-bottom:10px;"><strong>Current Errors (Phantoms)</strong></div>`;
+    if (!phantoms.length){
+      html += `<div class="muted">No phantom keys found.</div>`;
+    } else {
+      phantoms.forEach(p=>{
+        html += `<div>Key <strong>${p.stamp}</strong> (code ${p.code}) will open Door <strong>${p.door}</strong></div>`;
+      });
+    }
+
+    html += `<div style="margin-top:16px;margin-bottom:10px;"><strong>Future Errors (Ghosts)</strong></div>`;
+    if (!ghosts.length){
+      html += `<div class="muted">No ghost codes found.</div>`;
+    } else {
+      ghosts.forEach(g=>{
+        html += `<div>Code <strong>${g.label}</strong> (code ${g.code}) will open Door <strong>${g.door}</strong></div>`;
+      });
+    }
+
+    log.onDone(()=>{
+      logEl.textContent = '';      // old prints disappear
+      resultsEl.innerHTML = html;  // show summary
+    });
+  }
+
+
 
 
 
