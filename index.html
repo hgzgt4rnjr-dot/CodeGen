@@ -1986,7 +1986,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     const ghostCount   = ghosts.length;
     let html = '';
 
-    html += `<div style="margin-bottom:10px;font-size:16px;font-weight:600;">Current Errors (${phantomCount} Phantoms)</div>`;
+    html += `<div style="margin-bottom:10px;font-size:16px;font-weight:600;">Current Errors (Phantoms = ${phantomCount})</div>`;
     if (!phantoms.length){
       html += `<div class="muted">No phantom keys found.</div>`;
     } else {
@@ -1995,7 +1995,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       });
     }
 
-    html += `<div style="margin-top:16px;margin-bottom:10px;font-size:16px;font-weight:600;">Future Errors (${ghostCount} Ghosts)</div>`;
+    html += `<div style="margin-top:16px;margin-bottom:10px;font-size:16px;font-weight:600;">Future Errors (Ghosts = ${ghostCount})</div>`;
     if (!ghosts.length){
       html += `<div class="muted">No ghost codes found.</div>`;
     } else {
@@ -2003,6 +2003,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         html += `<div class="err">Code <strong>${g.label}</strong> will open Door <strong>${g.door}</strong></div>`;
       });
     }
+
 
     // after the slow typing finishes, replace the log with the final summary
     log.onDone(()=>{
