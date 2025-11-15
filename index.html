@@ -540,13 +540,49 @@
       <div id="assignTree"
            class="out"
            style="max-height:50vh; overflow:auto; margin-top:8px;"></div>
-      <div class="btnbar" style="justify-content:flex-end">
-        <button id="assignCancel">Cancel</button>
-        <button id="assignToggleErr">Show Errors</button>
-        <button class="primary" id="assignOk">Assign</button>
-      </div>
-    </div>
-  </div>
+       <div class="btnbar" style="justify-content:flex-end">
+         <button id="assignCancel">Cancel</button>
+         <button id="assignManual">✏️</button>
+         <button id="assignToggleErr">Show Errors</button>
+         <button class="primary" id="assignOk">Assign</button>
+       </div>
+     </div>
+   </div>
+   
+   <!-- Manual Code Modal -->
+   <div id="manualCodeModal" class="modal" hidden>
+     <div class="backdrop" id="manualCodeBackdrop"></div>
+     <div class="dialog">
+       <h3>Manual Code</h3>
+       <div class="row">
+         <div style="flex:1">
+           <label for="manualCodeInput">Manual Code</label>
+           <input id="manualCodeInput" type="text" placeholder="Enter code">
+         </div>
+       </div>
+       <div class="btnbar" style="justify-content:flex-end">
+         <button id="manualCodeCancel">Cancel</button>
+         <button class="primary" id="manualCodeOk">Assign</button>
+       </div>
+     </div>
+   </div>
+
+   <!-- Assign Code Warning Modal -->
+   <div id="assignWarnModal" class="modal" hidden>
+     <div class="backdrop" id="assignWarnBackdrop"></div>
+     <div class="dialog">
+       <h3>Change Assigned Code?</h3>
+       <p class="muted" style="margin:8px 0 16px 0;">
+         This key has previously been cut. Are you sure you want to change the code?
+       </p>
+       <div class="btnbar" style="justify-content:flex-end">
+         <button class="primary" id="assignWarnNo">No</button>
+         <button id="assignWarnYes" style="background:#b00020;border-color:#b00020;color:#fff;">Yes</button>
+       </div>
+     </div>
+   </div>
+
+
 
   <!-- Confirm Delete Modal -->
   <div id="confirmDeleteModal" class="modal" hidden>
@@ -561,29 +597,61 @@
     </div>
   </div>
   
-  <!-- Cut Keys Modal -->
-  <div id="cutKeyModal" class="modal" hidden>
-    <div class="backdrop" id="cutKeyBackdrop"></div>
-    <div class="dialog">
-      <h3>Cut Keys</h3>
-      <p class="muted" style="margin:6px 0 12px 0;">
-        How many <strong id="cutKeyLabel">—</strong> keys would you like to cut?
-      </p>
-      <div class="row" style="margin-top:6px;">
-        <div>
-          <label for="cutQty">Quantity</label>
-          <input id="cutQty" type="number" inputmode="numeric" min="1" step="1">
-        </div>
-      </div>
-      <div class="btnbar" style="justify-content:flex-end">
-        <button id="cutCancel">Cancel</button>
-        <button class="primary" id="cutConfirm">Add</button>
-      </div>
-    </div>
-  </div>
+   <!-- Cut Keys Modal -->
+   <div id="cutKeyModal" class="modal" hidden>
+     <div class="backdrop" id="cutKeyBackdrop"></div>
+     <div class="dialog">
+       <h3>Cut Keys</h3>
+       <p class="muted" style="margin:6px 0 12px 0;">
+         How many <strong id="cutKeyLabel">—</strong> keys would you like to cut?
+       </p>
+       <div class="row" style="margin-top:6px;">
+         <div>
+           <label for="cutQty">Quantity</label>
+           <input id="cutQty" type="number" inputmode="numeric" min="1" step="1">
+         </div>
+       </div>
+       <div class="btnbar" style="justify-content:flex-end">
+         <button id="cutCancel">Cancel</button>
+         <button class="primary" id="cutConfirm">Add</button>
+       </div>
+     </div>
+   </div>
 
-  <!-- Delete Key Modal -->
-  <div id="deleteKeyModal" class="modal" hidden>
+   <!-- Fast Build Modal -->
+   <div id="fastBuildModal" class="modal" hidden>
+     <div class="backdrop" id="fastBuildBackdrop"></div>
+     <div class="dialog">
+       <h3>Fast Build Keys</h3>
+       <p class="muted" style="margin:6px 0 12px 0;">
+         This will add all good codes from the Coding Tree into the Keys list, excluding bad codes.
+       </p>
+
+       <div style="margin-top:4px;">
+         <div class="muted" style="font-size:13px;margin-bottom:4px;">Conventions</div>
+         <div class="btnbar seg" style="justify-content:flex-start;margin-top:4px;">
+           <button id="fbConvNumeric">MK1 &amp; 1-1</button>
+           <button id="fbConvAlpha">MKA &amp; A-1</button>
+         </div>
+       </div>
+
+       <div style="margin-top:12px;">
+         <div class="muted" style="font-size:13px;margin-bottom:4px;">Change Key Code Allocation</div>
+         <div class="btnbar seg" style="justify-content:flex-start;margin-top:4px;">
+           <button id="fbAllocSeq">Sequential</button>
+           <button id="fbAllocRand">Random</button>
+         </div>
+       </div>
+
+       <div class="btnbar" style="justify-content:flex-end;margin-top:16px;">
+         <button id="fastBuildCancel">Cancel</button>
+         <button class="primary" id="fastBuildGo">Build Keys</button>
+       </div>
+     </div>
+   </div>
+
+   <!-- Delete Key Modal -->
+   <div id="deleteKeyModal" class="modal" hidden>
     <div class="backdrop" id="deleteKeyBackdrop"></div>
     <div class="dialog">
       <h3>Delete Key</h3>
@@ -670,7 +738,7 @@
   <div id="doorPinningModal" class="modal" hidden>
     <div class="backdrop" id="doorPinningBackdrop"></div>
     <div class="dialog">
-      <h3>Pinning</h3>
+      <h3 id="doorPinningTitle">Pinning</h3>
       <div id="pinningChart" class="out" style="margin-top:8px; overflow:auto;"></div>
       <div style="margin-top:12px;">
         <div class="muted" style="margin-bottom:6px;">Keys operating this door</div>
@@ -1845,15 +1913,21 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const btnRun  = document.getElementById('codingCheckRun');
       const btnClear = document.getElementById('codingCheckClear');
 
+      if (boxEl && _codingCheckLastHtml) {
+        boxEl.innerHTML = _codingCheckLastHtml;
+      }
+
       if (btnClear && boxEl) {
         btnClear.onclick = () => {
           boxEl.textContent = '';
+          _codingCheckLastHtml = '';
         };
       }
       if (btnRun && boxEl) {
         btnRun.onclick = () => runCodingCheck(boxEl);
       }
     }
+
 
     
     
@@ -1895,8 +1969,12 @@ ${pad(beforeLine2,22)}${afterLine2}`;
   function runCodingCheck(boxEl){
     if (!boxEl || !_currentSystem) return;
 
+    // start fresh for this run
+    boxEl.textContent = '';
+    _codingCheckLastHtml = '';
+
     // slow logger (60ms delay per line — adjust as needed)
-    const log = createSlowLogger(boxEl, 20);
+    const log = createSlowLogger(boxEl, 15);
 
     const doors = Array.isArray(_currentSystem.doors) ? _currentSystem.doors : [];
     const keys  = Array.isArray(_currentSystem.keys)  ? _currentSystem.keys  : [];
@@ -2027,6 +2105,32 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       });
     });
 
+    // sort phantoms by key stamping, then door
+    phantoms.sort((a,b)=>{
+      const as = String(a.stamp||'').toUpperCase();
+      const bs = String(b.stamp||'').toUpperCase();
+      if (as < bs) return -1;
+      if (as > bs) return 1;
+      const ad = String(a.door||'').toUpperCase();
+      const bd = String(b.door||'').toUpperCase();
+      if (ad < bd) return -1;
+      if (ad > bd) return 1;
+      return 0;
+    });
+
+    // sort ghosts by code, then label
+    ghosts.sort((a,b)=>{
+      const ac = String(a.code||'');
+      const bc = String(b.code||'');
+      if (ac < bc) return -1;
+      if (ac > bc) return 1;
+      const al = String(a.label||'').toUpperCase();
+      const bl = String(b.label||'').toUpperCase();
+      if (al < bl) return -1;
+      if (al > bl) return 1;
+      return 0;
+    });
+
     // Build final results output and wipe debug log (per your spec)
     const phantomCount = phantoms.length;
     const ghostCount   = ghosts.length;
@@ -2053,6 +2157,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
     // after the slow typing finishes, replace the log with the final summary
     log.onDone(()=>{
+      _codingCheckLastHtml = html;
       boxEl.textContent = '';
       boxEl.innerHTML = html;
       boxEl.scrollTop = 0;
@@ -2066,24 +2171,261 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
 
     
-        // ---- Keys view (grid + CRUD) ----
-    let _editingKeyIndex = null;
-    let _assignSelectedCode = '';
+     // ---- Keys view (grid + CRUD) ----
+     let _editingKeyIndex = null;
+     let _assignSelectedCode = '';
 
-    function persistCurrentSystem(){
-      if (!_currentSystem) return;
-      const systems = getSystems();
-      const i = systems.findIndex(s => s.id === _currentSystem.id);
-      if (i >= 0) systems[i] = _currentSystem; else systems.push(_currentSystem);
-      setSystems(systems);
-    }
+     function persistCurrentSystem(){
+       if (!_currentSystem) return;
+       const systems = getSystems();
+       const i = systems.findIndex(s => s.id === _currentSystem.id);
+       if (i >= 0) systems[i] = _currentSystem; else systems.push(_currentSystem);
+       setSystems(systems);
+     }
 
-    function ensureKeysArray(){
-      if (!_currentSystem.keys) _currentSystem.keys = [];
-    }
+     function ensureKeysArray(){
+       if (!_currentSystem.keys) _currentSystem.keys = [];
+     }
 
-    function renderKeysView(){
-      if (!_currentSystem) return;
+     // ---------- Fast Build (from Coding Tree → Keys) ----------
+     let _fastBuildConvention = 'numeric'; // 'numeric' => MK1 & 1-1, 'alpha' => MKA & A-1
+     let _fastBuildAlloc = 'seq';          // 'seq' => Sequential, 'rand' => Random
+
+     function fastBuildHasErrorCell(err){
+       if (!err) return false;
+       return /Error/i.test(String(err));
+     }
+
+     function fastBuildMkIndexToLetter(idx){
+       // 1 -> A, 2 -> B, ... 27 -> AA etc.
+       const A = 'A'.charCodeAt(0);
+       let n = idx - 1;
+       let out = '';
+       while (n >= 0){
+         out = String.fromCharCode(A + (n % 26)) + out;
+         n = Math.floor(n / 26) - 1;
+       }
+       return out;
+     }
+
+     function runFastBuild(convention, allocMode){
+       if (!_currentSystem) return;
+
+       // Only allow on empty keys list
+       ensureKeysArray();
+       if (_currentSystem.keys && _currentSystem.keys.length){
+         showMessage('Fast Build can only be used when the Keys list is empty.');
+         return;
+       }
+
+       const rows = (_currentSystem.rows || []).slice();
+       if (!rows.length){
+         showMessage('No Coding Tree found for this system. Build and save the system first.');
+         return;
+       }
+
+       // rows[0] = ["Key","Code","Error"]
+       const body = rows.slice(1).filter(r => r && r.length >= 2);
+
+       let gmkRow = null;
+       const mkGroups = new Map(); // mkIdx -> { mkLabel, mkCode, mkErr, cks: [] }
+
+       body.forEach(r => {
+         const label = String(r[0] || '').trim();
+         const code  = String(r[1] || '').trim();
+         const err   = (r.length >= 3) ? String(r[2] || '').trim() : '';
+
+         if (!label) return;
+
+         if (label.toUpperCase() === 'GMK'){
+           gmkRow = r;
+           return;
+         }
+
+         let m;
+         if ((m = label.match(/^MK(\d+)$/i))){
+           const idx = parseInt(m[1], 10);
+           if (!mkGroups.has(idx)){
+             mkGroups.set(idx, { mkLabel: label.toUpperCase(), mkCode: code, mkErr: fastBuildHasErrorCell(err), cks: [] });
+           } else {
+             const g = mkGroups.get(idx);
+             g.mkLabel = label.toUpperCase();
+             g.mkCode  = code;
+             g.mkErr   = fastBuildHasErrorCell(err);
+           }
+           return;
+         }
+
+         if ((m = label.match(/^CK(\d+)\.(\d+)$/i))){
+           const mkIdx = parseInt(m[1], 10);
+           const ckIdx = parseInt(m[2], 10);
+           if (!mkGroups.has(mkIdx)){
+             mkGroups.set(mkIdx, { mkLabel: 'MK'+mkIdx, mkCode: '', mkErr:false, cks: [] });
+           }
+           mkGroups.get(mkIdx).cks.push({
+             label: label.toUpperCase(),
+             code,
+             err,
+             idx: ckIdx
+           });
+           return;
+         }
+       });
+
+       const keys = [];
+
+       // GMK key (if present + not a bad code)
+       if (gmkRow && !fastBuildHasErrorCell(gmkRow[2])){
+         const gmkCode = String(gmkRow[1] || '').trim();
+         if (gmkCode){
+           keys.push({
+             stamping: 'GMK',
+             description: 'Grand Master Key',
+             code: gmkCode,
+             qty: 0
+           });
+         }
+       }
+
+       // Sort MK groups by numeric index
+       const mkIndices = Array.from(mkGroups.keys()).sort((a,b) => a - b);
+
+       mkIndices.forEach(idx => {
+         const group = mkGroups.get(idx);
+         if (!group) return;
+
+         const goodCks = group.cks.filter(c => c && c.code && !fastBuildHasErrorCell(c.err));
+         // We still add MK itself even if there are no good CKs
+
+         let mkStamp;
+         let ckBase; // base part for CK stamping (e.g. "1" or "A")
+
+         if (convention === 'alpha'){
+           const letter = fastBuildMkIndexToLetter(idx);
+           mkStamp = 'MK' + letter;
+           ckBase  = letter;
+         } else {
+           mkStamp = 'MK' + idx;
+           ckBase  = String(idx);
+         }
+
+         if (group.mkCode){
+           keys.push({
+             stamping: mkStamp,
+             description: 'Master Key',
+             code: group.mkCode,
+             qty: 0
+           });
+         }
+
+         if (!goodCks.length) return;
+
+         let pool = goodCks.slice();
+         if (allocMode === 'rand'){
+           // Fisher–Yates per MK
+           for (let i = pool.length - 1; i > 0; i--){
+             const j = Math.floor(Math.random() * (i + 1));
+             const tmp = pool[i];
+             pool[i] = pool[j];
+             pool[j] = tmp;
+           }
+         } else {
+           // Sequential: keep CKs ordered by their original index
+           pool.sort((a,b) => (a.idx||0) - (b.idx||0));
+         }
+
+         pool.forEach((ck, j) => {
+           const suffix = j + 1; // 1,2,3,...
+           const stamp = ckBase + '-' + suffix;
+           keys.push({
+             stamping: stamp,
+             description: 'Change Key',
+             code: ck.code,
+             qty: 0
+           });
+         });
+       });
+
+       _currentSystem.keys = keys;
+       _keysSelectedIdx = 0;
+       persistCurrentSystem();
+       renderKeysView();
+     }
+
+     function openFastBuildModal(){
+       const modal = document.getElementById('fastBuildModal');
+       const bd    = document.getElementById('fastBuildBackdrop');
+       const btnConvNumeric = document.getElementById('fbConvNumeric');
+       const btnConvAlpha   = document.getElementById('fbConvAlpha');
+       const btnAllocSeq    = document.getElementById('fbAllocSeq');
+       const btnAllocRand   = document.getElementById('fbAllocRand');
+       const btnCancel      = document.getElementById('fastBuildCancel');
+       const btnGo          = document.getElementById('fastBuildGo');
+
+       if (!modal || !bd || !btnConvNumeric || !btnConvAlpha || !btnAllocSeq || !btnAllocRand || !btnCancel || !btnGo){
+         showMessage('Fast Build UI not found.');
+         return;
+       }
+
+       function syncConv(){
+         btnConvNumeric.classList.toggle('selected', _fastBuildConvention === 'numeric');
+         btnConvAlpha.classList.toggle('selected', _fastBuildConvention === 'alpha');
+       }
+       function syncAlloc(){
+         btnAllocSeq.classList.toggle('selected', _fastBuildAlloc === 'seq');
+         btnAllocRand.classList.toggle('selected', _fastBuildAlloc === 'rand');
+       }
+
+       syncConv();
+       syncAlloc();
+
+       function close(){
+         modal.hidden = true;
+         bd.onclick = null;
+         btnCancel.onclick = null;
+         btnGo.onclick = null;
+         btnConvNumeric.onclick = null;
+         btnConvAlpha.onclick = null;
+         btnAllocSeq.onclick = null;
+         btnAllocRand.onclick = null;
+       }
+
+       bd.onclick = close;
+       btnCancel.onclick = close;
+
+       btnConvNumeric.onclick = () => {
+         _fastBuildConvention = 'numeric';
+         syncConv();
+       };
+       btnConvAlpha.onclick = () => {
+         _fastBuildConvention = 'alpha';
+         syncConv();
+       };
+
+       btnAllocSeq.onclick = () => {
+         _fastBuildAlloc = 'seq';
+         syncAlloc();
+       };
+       btnAllocRand.onclick = () => {
+         _fastBuildAlloc = 'rand';
+         syncAlloc();
+       };
+
+       btnGo.onclick = () => {
+         try {
+           runFastBuild(_fastBuildConvention, _fastBuildAlloc);
+         } catch (e){
+           console.error(e);
+           showMessage('Fast Build failed: ' + (e && e.message ? e.message : e));
+         }
+         close();
+       };
+
+       modal.hidden = false;
+     }
+
+     function renderKeysView(){
+       if (!_currentSystem) return;
       ensureKeysArray();
       const content = document.getElementById('systemContent');
       if (!content) return;
@@ -2102,28 +2444,37 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       html += '</div>';
 
 
-      html += `
-        <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:12px;">
-          <button id="keyAdd">Add</button>
-          <button id="keyEdit" disabled>Edit</button>
-          <button id="keyCut" disabled>Cut Keys</button>
-          <button id="keyDelete" class="warn" disabled>Delete Key</button>
-        </div>
-      `;
+       html += `
+         <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:12px;">
+           ${rows.length === 0 ? '<button id="keyFastBuild" class="primary">Fast Build</button>' : ''}
+           <button id="keyAdd">Add</button>
+           <button id="keyEdit" disabled>Edit</button>
+           <button id="keyCut" disabled>Cut Keys</button>
+           <button id="keyDelete" class="warn" disabled>Delete Key</button>
+         </div>
+       `;
 
       content.innerHTML = html;
 
-      const rowsHost = document.getElementById('keyRows');
-      rowsHost.innerHTML = rows.map((k, idx) => {
-        return (
-          '<button type="button" class="keyrow" data-idx="'+idx+'">' +
-            '<div class="keycell">'+(k.stamping||'')+'</div>' +
-            '<div class="keycell">'+(k.description||'')+'</div>' +
-            '<div class="keycell">'+(k.code||'')+'</div>' +
-            '<div class="keycell qty">'+((k.qty||0))+'</div>' +
-          '</button>'
-        );
-      }).join('');
+       const rowsHost = document.getElementById('keyRows');
+       rowsHost.innerHTML = rows.map((k, idx) => {
+         return (
+           '<button type="button" class="keyrow" data-idx="'+idx+'">' +
+             '<div class="keycell">'+(k.stamping||'')+'</div>' +
+             '<div class="keycell">'+(k.description||'')+'</div>' +
+             '<div class="keycell">'+(k.code||'')+'</div>' +
+             '<div class="keycell qty">'+((k.qty||0))+'</div>' +
+           '</button>'
+         );
+       }).join('');
+
+       const btnFast = document.getElementById('keyFastBuild');
+       if (btnFast) {
+         btnFast.onclick = () => {
+           openFastBuildModal();
+         };
+       }
+
 
       let selectedIdx = (_keysSelectedIdx >= 0 && _keysSelectedIdx < rows.length) ? _keysSelectedIdx : -1;
       const rowEls = Array.from(rowsHost.querySelectorAll('.keyrow'));
@@ -2255,6 +2606,8 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
     // ---- Keys view selection memory ----
     let _keysSelectedIdx = -1;   // remember which key is selected across re-renders
+    let _codingCheckLastHtml = '';  // remember last Coding Check result
+
 
 
 
@@ -2419,9 +2772,16 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const modal   = document.getElementById('doorPinningModal');
       const chart   = document.getElementById('pinningChart');
       const keysBox = document.getElementById('pinningKeysList');
+      const title   = document.getElementById('doorPinningTitle');
 
       const door = _currentSystem.doors[doorIdx];
       const stamps = Array.isArray(door?.keys) ? door.keys.slice() : [];
+
+      if (title){
+        const stamp = String(door?.stamping || '').trim().toUpperCase();
+        title.textContent = stamp ? `Pinning for ${stamp}` : 'Pinning';
+      }
+
 
       // collect key objects for this door based on stamping
       const allKeys = (_currentSystem.keys||[]);
@@ -2875,14 +3235,70 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     }
 
 
-    document.getElementById('assignBackdrop').onclick = ()=>{
-      document.getElementById('assignModal').hidden = true;
-    };
+     document.getElementById('assignBackdrop').onclick = ()=>{
+       document.getElementById('assignModal').hidden = true;
+     };
 
-    document.getElementById('keyAssignOpen').onclick = ()=>{
-      if (!_currentSystem) return;
-      openAssignModal();
-    };
+     // Manual Code modal wiring
+     document.getElementById('manualCodeBackdrop').onclick = ()=>{
+       document.getElementById('manualCodeModal').hidden = true;
+     };
+     document.getElementById('manualCodeCancel').onclick = ()=>{
+       document.getElementById('manualCodeModal').hidden = true;
+     };
+     document.getElementById('manualCodeOk').onclick = ()=>{
+       const input = document.getElementById('manualCodeInput');
+       const v = (input.value || '').trim();
+       if (!v){
+         document.getElementById('manualCodeModal').hidden = true;
+         return;
+       }
+       _assignSelectedCode = v;
+       document.getElementById('keyCodeDisplay').value = _assignSelectedCode;
+       document.getElementById('manualCodeModal').hidden = true;
+       document.getElementById('assignModal').hidden = true;
+     };
+
+     // Warning modal when key has previously been cut
+     document.getElementById('assignWarnBackdrop').onclick = ()=>{
+       document.getElementById('assignWarnModal').hidden = true;
+     };
+     document.getElementById('assignWarnNo').onclick = ()=>{
+       document.getElementById('assignWarnModal').hidden = true;
+     };
+     document.getElementById('assignWarnYes').onclick = ()=>{
+       document.getElementById('assignWarnModal').hidden = true;
+       openAssignModal();
+     };
+
+     // Pencil button opens Manual Code modal
+     document.getElementById('assignManual').onclick = ()=>{
+       const m = document.getElementById('manualCodeModal');
+       const input = document.getElementById('manualCodeInput');
+       input.value = '';
+       m.hidden = false;
+       input.focus();
+     };
+
+     // Assign Code button – warn if qty > 0 before opening assign list
+     document.getElementById('keyAssignOpen').onclick = ()=>{
+       if (!_currentSystem) return;
+       ensureKeysArray();
+
+       let qty = 0;
+       if (_editingKeyIndex != null &&
+           _currentSystem.keys &&
+           _currentSystem.keys[_editingKeyIndex]) {
+         qty = Number(_currentSystem.keys[_editingKeyIndex].qty || 0);
+       }
+
+       if (qty > 0){
+         document.getElementById('assignWarnModal').hidden = false;
+       } else {
+         openAssignModal();
+       }
+     };
+
 
 
 
