@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -89,8 +90,13 @@
       grid-template-columns: 1.2fr 1.8fr 1.2fr .6fr;
       gap:8px;
       align-items:center;
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:#0e0e0e;
     }
     .keygrid .hdr { font-weight:600; }
+
 
     /* Adjust header alignments in Keys grid */
     /* Description → slightly right */
@@ -142,11 +148,16 @@
         /* Doors grid (same look; 3 columns) */
     .doorgrid {
       display:grid;
-      grid-template-columns: 1.2fr 1.8fr 1.2fr;
+      grid-template-columns: 1.2fr 1.8fr 1.5fr;
       gap:8px;
       align-items:center;
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:#0e0e0e;
     }
     .doorgrid .hdr { font-weight:600; }
+
 
     /* shift the "Part Number" header text slightly left (without moving column) */
     .doorgrid .hdr:nth-child(3) {
@@ -252,7 +263,7 @@
     /* Keying grid checkboxes – view mode (green + not clickable) */
     .kgCB.viewmode {
       pointer-events:none;       /* can’t click */
-      accent-color:var(--accent);
+      accent-color:#00c060;
       opacity:1;                 /* no grey fade */
       cursor:default;
     }
@@ -584,6 +595,17 @@
     </div>
   </div>
   
+  <!-- Message Modal -->
+  <div id="msgModal" class="modal" hidden>
+    <div class="backdrop" id="msgBackdrop"></div>
+    <div class="dialog">
+      <h3>Key Not Added</h3>
+      <div id="msgLine" class="muted" style="margin:8px 0 12px 0;"></div>
+      <div class="btnbar" style="justify-content:flex-end">
+        <button class="primary" id="msgOk">OK</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Door Editor Modal -->
   <div id="doorModal" class="modal" hidden>
@@ -611,6 +633,7 @@
         </div>
       </div>
       <div class="btnbar" style="justify-content:flex-end">
+        <button id="doorAddAnother">Add Another</button>
         <button id="doorCancel">Cancel</button>
         <button class="primary" id="doorSave">Save</button>
       </div>
@@ -694,6 +717,29 @@
     // ---------- Utility ----------
     const $ = s => document.querySelector(s);
     const randInt = (a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+
+    function showMessage(msg){
+      const modal = document.getElementById('msgModal');
+      const line  = document.getElementById('msgLine');
+      const ok    = document.getElementById('msgOk');
+      const bd    = document.getElementById('msgBackdrop');
+      if (!modal || !line || !ok || !bd) {
+        alert(msg);
+        return;
+      }
+      line.textContent = msg;
+      modal.hidden = false;
+
+      function close(){
+        modal.hidden = true;
+        ok.onclick = null;
+        bd.onclick = null;
+      }
+
+      ok.onclick = close;
+      bd.onclick = close;
+    }
+
 
     function hasMaxAdjacentCutError(arr){
       for (let i=0;i<arr.length-1;i++){
@@ -1545,7 +1591,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           <div style="overflow:auto; white-space:nowrap;">
             <table class="kgTable">
               <tr>
-                <th class="hdr muted" style="padding:6px 12px;">Doors \\ Keys</th>
+                <th class="hdr muted" style="padding:6px 12px;">Doors ↓</th>
                 ${keys.map(k=>`
                   <th class="hdr muted" style="padding:6px 12px;">${k.stamping||''}</th>
                 `).join('')}
@@ -2045,14 +2091,16 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const rows = _currentSystem.keys;
 
       let html = '';
-      html += '<div class="keygrid">';
-      html += '  <div class="hdr muted">Stamping</div>';
-      html += '  <div class="hdr muted">Description</div>';
-      html += '  <div class="hdr muted">Code</div>';
-      html += '  <div class="hdr muted">Qty</div>';
+      html += '<div style="max-height:60vh;overflow:auto;">';
+      html += '  <div class="keygrid">';
+      html += '    <div class="hdr muted">Stamping</div>';
+      html += '    <div class="hdr muted">Description</div>';
+      html += '    <div class="hdr muted">Code</div>';
+      html += '    <div class="hdr muted">Qty</div>';
+      html += '  </div>';
+      html += '  <div id="keyRows" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>';
       html += '</div>';
 
-      html += '<div id="keyRows" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>';
 
       html += `
         <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:12px;">
@@ -2105,8 +2153,18 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
       document.getElementById('keyAdd').onclick = ()=>{
         _editingKeyIndex = null;
-        openKeyModal({ stamping:'', description:'', code:'', qty:0 });
+
+        let baseStamp = '';
+        if (_keysSelectedIdx >= 0 && _currentSystem && Array.isArray(_currentSystem.keys) && _currentSystem.keys[_keysSelectedIdx]) {
+          baseStamp = _currentSystem.keys[_keysSelectedIdx].stamping || '';
+        } else if (_currentSystem && Array.isArray(_currentSystem.keys) && _currentSystem.keys.length) {
+          baseStamp = _currentSystem.keys[_currentSystem.keys.length - 1].stamping || '';
+        }
+
+        const nextStamp = getNextStamping(baseStamp);
+        openKeyModal({ stamping: nextStamp, description:'', code:'', qty:0 });
       };
+
 
       document.getElementById('keyEdit').onclick = ()=>{
         if (selectedIdx < 0) return;
@@ -2216,10 +2274,12 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     function closeDoorModal(){ document.getElementById('doorModal').hidden = true; }
 
     // Door modal buttons
+    // Door modal buttons
     document.getElementById('doorBackdrop').onclick = closeDoorModal;
     document.getElementById('doorCancel').onclick   = closeDoorModal;
-    document.getElementById('doorSave').onclick     = ()=>{
-      if (!_currentSystem) return;
+
+    function saveDoorFromModal(){
+      if (!_currentSystem) return null;
       ensureDoorsArray();
       const obj = {
         stamping   : (document.getElementById('doorStamping').value || '').trim(),
@@ -2230,21 +2290,48 @@ ${pad(beforeLine2,22)}${afterLine2}`;
                       ? _currentSystem.doors[_editingDoorIndex].keys.slice()
                       : []
       };
+      let savedIdx = null;
       if (_editingDoorIndex == null){
         // insert after currently selected door; if none, append
         const insertAt = (_doorsSelectedIdx >= 0 && _doorsSelectedIdx < _currentSystem.doors.length)
           ? (_doorsSelectedIdx + 1)
           : _currentSystem.doors.length;
         _currentSystem.doors.splice(insertAt, 0, obj);
-        _doorsSelectedIdx = insertAt;   // keep the new door selected
+        savedIdx = insertAt;
       } else {
         _currentSystem.doors[_editingDoorIndex] = obj;
-        _doorsSelectedIdx = _editingDoorIndex;  // keep edited door selected
+        savedIdx = _editingDoorIndex;
       }
+      _doorsSelectedIdx = savedIdx;
       persistCurrentSystem();
-      closeDoorModal();
       renderDoorsView();
+      return savedIdx;
+    }
+
+    document.getElementById('doorSave').onclick     = ()=>{
+      const savedIdx = saveDoorFromModal();
+      if (savedIdx == null) return;
+      closeDoorModal();
     };
+
+    document.getElementById('doorAddAnother').onclick = ()=>{
+      const savedIdx = saveDoorFromModal();
+      if (savedIdx == null) return;
+
+      const ref = _currentSystem.doors[savedIdx] || {};
+      const baseStamp = ref.stamping || '';
+      const baseDesc  = ref.description || '';
+      const basePart  = ref.part || '';
+
+      const nextStamp = getNextStamping(baseStamp);
+
+      document.getElementById('doorStamping').value = nextStamp;
+      document.getElementById('doorDesc').value     = baseDesc;
+      document.getElementById('doorPart').value     = basePart;
+      document.getElementById('doorNotes').value    = '';
+      _editingDoorIndex = null;
+    };
+
 
 
 
@@ -2439,13 +2526,15 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const rows = _currentSystem.doors;
 
       let html = '';
-      html += '<div class="doorgrid">';
-      html += '  <div class="hdr muted">Stamping</div>';
-      html += '  <div class="hdr muted">Description</div>';
-      html += '  <div class="hdr muted">Part Number</div>';
+      html += '<div style="max-height:60vh;overflow:auto;">';
+      html += '  <div class="doorgrid">';
+      html += '    <div class="hdr muted">Stamping</div>';
+      html += '    <div class="hdr muted">Description</div>';
+      html += '    <div class="hdr muted">Part Number</div>';
+      html += '  </div>';
+      html += '  <div id="doorRows" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>';
       html += '</div>';
 
-      html += '<div id="doorRows" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>';
 
       html += `
         <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:12px;">
@@ -2499,8 +2588,27 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
       document.getElementById('doorAdd').onclick = ()=>{
         _editingDoorIndex = null;
-        openDoorModal({ stamping:'', description:'', part:'', notes:'', keys:[] });
+
+        let baseStamp = '';
+        let baseDesc  = '';
+        let basePart  = '';
+
+        if (_doorsSelectedIdx >= 0 && _currentSystem && Array.isArray(_currentSystem.doors) && _currentSystem.doors[_doorsSelectedIdx]) {
+          const ref = _currentSystem.doors[_doorsSelectedIdx];
+          baseStamp = ref.stamping || '';
+          baseDesc  = ref.description || '';
+          basePart  = ref.part || '';
+        } else if (_currentSystem && Array.isArray(_currentSystem.doors) && _currentSystem.doors.length) {
+          const ref = _currentSystem.doors[_currentSystem.doors.length - 1];
+          baseStamp = ref.stamping || '';
+          baseDesc  = ref.description || '';
+          basePart  = ref.part || '';
+        }
+
+        const nextStamp = getNextStamping(baseStamp);
+        openDoorModal({ stamping: nextStamp, description: baseDesc, part: basePart, notes:'', keys:[] });
       };
+
       document.getElementById('doorEdit').onclick = ()=>{
         if (selectedIdx < 0) return;
         _editingDoorIndex = selectedIdx;
@@ -2533,6 +2641,68 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         }
       });
 
+      function getNextStamping(baseStamp){
+        if (!baseStamp) return '';
+        const s = String(baseStamp).trim();
+        if (!s) return '';
+
+        const hyphenIndex = s.lastIndexOf('-');
+        let prefix = '';
+        let token = s;
+        if (hyphenIndex !== -1 && hyphenIndex < s.length - 1) {
+          prefix = s.slice(0, hyphenIndex + 1);
+          token = s.slice(hyphenIndex + 1);
+        }
+
+        const isNumeric = /^\d+$/.test(token);
+        const isAlpha   = /^[A-Z]+$/.test(token);
+
+        if (isNumeric) {
+          const oldLen = token.length;
+          const n = parseInt(token, 10) + 1;
+          let nxt = String(n);
+          if (oldLen > 1 && nxt.length < oldLen) {
+            nxt = nxt.padStart(oldLen, '0');
+          }
+          return prefix + nxt;
+        }
+
+        if (isAlpha) {
+          const chars = token.toUpperCase().split('');
+          let carry = 1;
+          for (let i = chars.length - 1; i >= 0; i--) {
+            if (!carry) break;
+            const code = chars[i].charCodeAt(0) - 65; // A=0
+            const sum = code + carry;
+            chars[i] = String.fromCharCode(65 + (sum % 26));
+            carry = sum >= 26 ? 1 : 0;
+          }
+          if (carry) {
+            chars.unshift('A');
+          }
+          return prefix + chars.join('');
+        }
+
+        // Mixed prefix + digits (e.g. MK1, D03)
+        const prefixDigitsMatch = /^([A-Z]+)(\d+)$/.exec(token.toUpperCase());
+        if (prefixDigitsMatch) {
+          const basePrefix = prefixDigitsMatch[1];
+          const numPart    = prefixDigitsMatch[2];
+          const oldLen     = numPart.length;
+          const n          = parseInt(numPart, 10) + 1;
+          let nxt          = String(n);
+          if (oldLen > 1 && nxt.length < oldLen) {
+            nxt = nxt.padStart(oldLen, '0');
+          }
+          return prefix + basePrefix + nxt;
+        }
+
+        // Fallback: mixed token, no safe rule → return original
+        return s;
+      }
+
+
+
 
 
     // --- Key Editor Modal helpers ---
@@ -2559,6 +2729,21 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const desc     = (document.getElementById('keyDesc').value || '').trim();
       const code     = (document.getElementById('keyCodeDisplay').value || '').trim();
 
+      // prevent duplicate stampings within this system
+      if (stamping) {
+        const upperStamp = stamping.toUpperCase();
+        const keysArr = _currentSystem.keys || [];
+        const currentIdx = (_editingKeyIndex != null) ? _editingKeyIndex : -1;
+        const clash = keysArr.some((k, idx) =>
+          idx !== currentIdx &&
+          String(k.stamping || '').trim().toUpperCase() === upperStamp
+        );
+        if (clash) {
+          showMessage('Stamping Already Exists.');
+          return;
+        }
+      }
+
       const obj = { stamping, description: desc, code, qty: (_editingKeyIndex!=null && _currentSystem.keys[_editingKeyIndex]) ? (_currentSystem.keys[_editingKeyIndex].qty||0) : 0 };
 
       if (_editingKeyIndex == null){
@@ -2576,6 +2761,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       closeKeyModal();
       renderKeysView();
     };
+
 
 
     // --- Assign Code Modal ---
