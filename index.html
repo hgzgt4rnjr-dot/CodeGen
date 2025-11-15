@@ -2309,14 +2309,15 @@ ${pad(beforeLine2,22)}${afterLine2}`;
            ckBase  = String(idx);
          }
 
-         if (group.mkCode){
-           keys.push({
-             stamping: mkStamp,
-             description: 'Master Key',
-             code: group.mkCode,
-             qty: 0
-           });
-         }
+        if (group.mkCode && !group.mkErr){
+            keys.push({
+                stamping: mkStamp,
+                description: 'Master Key',
+                code: group.mkCode,
+                qty: 0
+            });
+        }
+
 
          if (!goodCks.length) return;
 
