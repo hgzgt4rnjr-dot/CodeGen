@@ -557,7 +557,7 @@
        <div class="row">
          <div style="flex:1">
            <label for="manualCodeInput">Manual Code</label>
-           <input id="manualCodeInput" type="text" placeholder="Enter code">
+           <input id="manualCodeInput" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Enter code">
          </div>
        </div>
        <div class="btnbar" style="justify-content:flex-end">
@@ -3254,11 +3254,16 @@ ${pad(beforeLine2,22)}${afterLine2}`;
          document.getElementById('manualCodeModal').hidden = true;
          return;
        }
+       if (!/^[0-9]+$/.test(v)){
+         showMessage('Manual code must contain digits only.');
+         return;
+       }
        _assignSelectedCode = v;
        document.getElementById('keyCodeDisplay').value = _assignSelectedCode;
        document.getElementById('manualCodeModal').hidden = true;
        document.getElementById('assignModal').hidden = true;
      };
+
 
      // Warning modal when key has previously been cut
      document.getElementById('assignWarnBackdrop').onclick = ()=>{
