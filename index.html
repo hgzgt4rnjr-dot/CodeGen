@@ -1,3 +1,7 @@
+<!-- 
+  © 2025 Daniel Allotta — All rights reserved.
+  This software is proprietary. Unauthorized copying, distribution, or modification is prohibited.
+-->
 
 <!doctype html>
 <html lang="en">
@@ -2162,16 +2166,21 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       ? codingLinesToHTML(lines)
       : lines.join('\n');
 
-    // swap only the error message text for key stampings
-    const html = htmlRaw
-      .replace(/\b(MAC|DFC|MCV)\s*Error\b/g, '')
-      .replace(/((?:GMK|MK\d+|CK\d+\.\d+)\s*-\s*\d+)/g, (m)=>{
-        const codeMatch = m.match(/(\d{3,})$/);
-        if (!codeMatch) return m;
-        const code = codeMatch[1];
-        const stamps = keyMap[code] ? `   ${keyMap[code].join(', ')}` : '';
-        return m + stamps;
-      });
+      // swap only the error message text for key stampings
+      const html = htmlRaw
+        .replace(/(?:&amp;|\s*&\s*)?(?:MAC|DFC|MCV)\s*Error\b/gi, '')
+        .replace(/&amp;/g, '')
+        .replace(/((?:GMK|MK\d+|CK\d+\.\d+)\s*-\s*\d+)/g, (m)=>{
+          const codeMatch = m.match(/(\d{3,})$/);
+          if (!codeMatch) return m;
+          const code = codeMatch[1];
+          const stamps = keyMap[code] ? `   ${keyMap[code].join(', ')}` : '';
+          return m + stamps;
+        });
+
+
+
+
 
     // render EXACTLY like Coding Only (same wrapper, no <pre>, no trimming)
     host.innerHTML = `<div>${html}</div>`;
@@ -2305,6 +2314,8 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     const treeLines = _currentSystem.lines || [];
     treeLines.forEach(line=>{
       const raw = line.replace(/%c/g,'');
+      if (/Error/i.test(raw)) return;  // <-- ignore any line with an Error
+
       let label = '';
       let code  = '';
       if (/^GMK - /.test(raw)){
@@ -2324,6 +2335,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       if (!codeLabels[digits]) codeLabels[digits] = [];
       codeLabels[digits].push(label);
     });
+
 
     const phantoms = [];
     const ghosts   = [];
