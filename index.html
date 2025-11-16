@@ -1768,8 +1768,11 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
       if (btnClose) btnClose.onclick = () => {
         _currentSystem = null;
+        _codingCheckLastHtml = '';
+        _codingCheckSortMode = 'key';
         showLoad();
       };
+
 
       if (btnKeys)        btnKeys.onclick        = ()=>{ renderKeysView();        setActiveTab('keys');   };
       if (btnDoors)       btnDoors.onclick       = ()=>{ renderDoorsView();       setActiveTab('doors');  };
@@ -1898,11 +1901,14 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const content = document.getElementById('systemContent');
       if (!content) return;
 
+      const sortLabel = (_codingCheckSortMode === 'door') ? 'Sort by Number' : 'Sort by Door';
+
       content.innerHTML = `
         <div style="display:flex;flex-direction:column;gap:10px;">
           <div class="muted" style="font-size:16px;font-weight:600;">Coding Check</div>
           <div id="codingCheckBox" class="out" style="max-height:60vh;overflow:auto;"></div>
           <div class="btnbar" style="justify-content:flex-end;margin-top:10px;">
+            <button id="codingCheckSort">${sortLabel}</button>
             <button id="codingCheckClear">Clear</button>
             <button id="codingCheckRun" class="primary">Run</button>
           </div>
@@ -1912,21 +1918,38 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const boxEl   = document.getElementById('codingCheckBox');
       const btnRun  = document.getElementById('codingCheckRun');
       const btnClear = document.getElementById('codingCheckClear');
+      const btnSort  = document.getElementById('codingCheckSort');
 
       if (boxEl && _codingCheckLastHtml) {
         boxEl.innerHTML = _codingCheckLastHtml;
       }
 
-      if (btnClear && boxEl) {
-        btnClear.onclick = () => {
-          boxEl.textContent = '';
-          _codingCheckLastHtml = '';
-        };
-      }
-      if (btnRun && boxEl) {
-        btnRun.onclick = () => runCodingCheck(boxEl);
-      }
-    }
+       if (btnClear && boxEl) {
+         btnClear.onclick = () => {
+           boxEl.textContent = '';
+           _codingCheckLastHtml = '';
+           _codingCheckLastPhantoms = null;
+           _codingCheckLastGhosts   = null;
+         };
+       }
+       if (btnRun && boxEl) {
+         btnRun.onclick = () => runCodingCheck(boxEl);
+       }
+       if (btnSort && boxEl) {
+         btnSort.onclick = () => {
+           _codingCheckSortMode = (_codingCheckSortMode === 'door') ? 'key' : 'door';
+           btnSort.textContent = (_codingCheckSortMode === 'door') ? 'Sort by Key & Code' : 'Sort by Door';
+
+           if (_codingCheckLastPhantoms && _codingCheckLastGhosts) {
+             rebuildCodingCheckFromCache(boxEl);
+           } else {
+             runCodingCheck(boxEl);
+           }
+         };
+       }
+     }
+
+
 
 
     
@@ -1965,9 +1988,13 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     
     
 
-  // ---- Coding Check engine (find phantoms + ghosts) ----
-  function runCodingCheck(boxEl){
-    if (!boxEl || !_currentSystem) return;
+   let _codingCheckLastPhantoms = null;
+   let _codingCheckLastGhosts   = null;
+
+   // ---- Coding Check engine (find phantoms + ghosts) ----
+   function runCodingCheck(boxEl){
+     if (!boxEl || !_currentSystem) return;
+
 
     // start fresh for this run
     boxEl.textContent = '';
@@ -2105,64 +2132,191 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       });
     });
 
-    // sort phantoms by key stamping, then door
-    phantoms.sort((a,b)=>{
-      const as = String(a.stamp||'').toUpperCase();
-      const bs = String(b.stamp||'').toUpperCase();
-      if (as < bs) return -1;
-      if (as > bs) return 1;
-      const ad = String(a.door||'').toUpperCase();
-      const bd = String(b.door||'').toUpperCase();
-      if (ad < bd) return -1;
-      if (ad > bd) return 1;
-      return 0;
-    });
+     if (_codingCheckSortMode === 'door') {
+       // sort phantoms by door, then key stamping
+       phantoms.sort((a,b)=>{
+         const ad = String(a.door||'').toUpperCase();
+         const bd = String(b.door||'').toUpperCase();
+         if (ad < bd) return -1;
+         if (ad > bd) return 1;
+         const as = String(a.stamp||'').toUpperCase();
+         const bs = String(b.stamp||'').toUpperCase();
+         if (as < bs) return -1;
+         if (as > bs) return 1;
+         return 0;
+       });
 
-    // sort ghosts by code, then label
-    ghosts.sort((a,b)=>{
-      const ac = String(a.code||'');
-      const bc = String(b.code||'');
-      if (ac < bc) return -1;
-      if (ac > bc) return 1;
-      const al = String(a.label||'').toUpperCase();
-      const bl = String(b.label||'').toUpperCase();
-      if (al < bl) return -1;
-      if (al > bl) return 1;
-      return 0;
-    });
+       // sort ghosts by door, then code, then label
+       ghosts.sort((a,b)=>{
+         const ad = String(a.door||'').toUpperCase();
+         const bd = String(b.door||'').toUpperCase();
+         if (ad < bd) return -1;
+         if (ad > bd) return 1;
+         const ac = String(a.code||'');
+         const bc = String(b.code||'');
+         if (ac < bc) return -1;
+         if (ac > bc) return 1;
+         const al = String(a.label||'').toUpperCase();
+         const bl = String(b.label||'').toUpperCase();
+         if (al < bl) return -1;
+         if (al > bl) return 1;
+         return 0;
+       });
+     } else {
+       // sort phantoms by key stamping, then door
+       phantoms.sort((a,b)=>{
+         const as = String(a.stamp||'').toUpperCase();
+         const bs = String(b.stamp||'').toUpperCase();
+         if (as < bs) return -1;
+         if (as > bs) return 1;
+         const ad = String(a.door||'').toUpperCase();
+         const bd = String(b.door||'').toUpperCase();
+         if (ad < bd) return -1;
+         if (ad > bd) return 1;
+         return 0;
+       });
 
-    // Build final results output and wipe debug log (per your spec)
-    const phantomCount = phantoms.length;
-    const ghostCount   = ghosts.length;
-    let html = '';
+       // sort ghosts by code, then label
+       ghosts.sort((a,b)=>{
+         const ac = String(a.code||'');
+         const bc = String(b.code||'');
+         if (ac < bc) return -1;
+         if (ac > bc) return 1;
+         const al = String(a.label||'').toUpperCase();
+         const bl = String(b.label||'').toUpperCase();
+         if (al < bl) return -1;
+         if (al > bl) return 1;
+         return 0;
+       });
+     }
 
-    html += `<div style="margin-bottom:10px;font-size:16px;font-weight:600;">Current Errors (Phantoms = ${phantomCount})</div>`;
-    if (!phantoms.length){
-      html += `<div class="muted">No phantom keys found.</div>`;
-    } else {
-      phantoms.forEach(p=>{
-        html += `<div class="err">Key <strong>${p.stamp}</strong> will open Door <strong>${p.door}</strong></div>`;
-      });
-    }
+     _codingCheckLastPhantoms = phantoms.slice();
+     _codingCheckLastGhosts   = ghosts.slice();
 
-    html += `<div style="margin-top:16px;margin-bottom:10px;font-size:16px;font-weight:600;">Future Errors (Ghosts = ${ghostCount})</div>`;
-    if (!ghosts.length){
-      html += `<div class="muted">No ghost codes found.</div>`;
-    } else {
-      ghosts.forEach(g=>{
-        html += `<div class="err">Code <strong>${g.label}</strong> will open Door <strong>${g.door}</strong></div>`;
-      });
-    }
+     // Build final results output and wipe debug log (per your spec)
+     const phantomCount = phantoms.length;
+     const ghostCount   = ghosts.length;
+     let html = '';
+
+     html += `<div style="margin-bottom:10px;font-size:16px;font-weight:600;">Current Errors (Phantoms = ${phantomCount})</div>`;
+     if (!phantoms.length){
+       html += `<div class="muted">No phantom keys found.</div>`;
+     } else {
+       phantoms.forEach(p=>{
+         html += `<div class="err">Key <strong>${p.stamp}</strong> will open Door <strong>${p.door}</strong></div>`;
+       });
+     }
+
+     html += `<div style="margin-top:16px;margin-bottom:10px;font-size:16px;font-weight:600;">Future Errors (Ghosts = ${ghostCount})</div>`;
+     if (!ghosts.length){
+       html += `<div class="muted">No ghost codes found.</div>`;
+     } else {
+       ghosts.forEach(g=>{
+         html += `<div class="err">Code <strong>${g.label}</strong> will open Door <strong>${g.door}</strong></div>`;
+       });
+     }
 
 
-    // after the slow typing finishes, replace the log with the final summary
-    log.onDone(()=>{
-      _codingCheckLastHtml = html;
-      boxEl.textContent = '';
-      boxEl.innerHTML = html;
-      boxEl.scrollTop = 0;
-    });
-  }
+     // after the slow typing finishes, replace the log with the final summary
+     log.onDone(()=>{
+       _codingCheckLastHtml = html;
+       boxEl.textContent = '';
+       boxEl.innerHTML = html;
+       boxEl.scrollTop = 0;
+     });
+   }
+
+   function rebuildCodingCheckFromCache(boxEl){
+     if (!boxEl || !_codingCheckLastPhantoms || !_codingCheckLastGhosts) return;
+
+     const phantoms = _codingCheckLastPhantoms.slice();
+     const ghosts   = _codingCheckLastGhosts.slice();
+
+     if (_codingCheckSortMode === 'door') {
+       // sort phantoms by door, then key stamping
+       phantoms.sort((a,b)=>{
+         const ad = String(a.door||'').toUpperCase();
+         const bd = String(b.door||'').toUpperCase();
+         if (ad < bd) return -1;
+         if (ad > bd) return 1;
+         const as = String(a.stamp||'').toUpperCase();
+         const bs = String(b.stamp||'').toUpperCase();
+         if (as < bs) return -1;
+         if (as > bs) return 1;
+         return 0;
+       });
+
+       // sort ghosts by door, then code, then label
+       ghosts.sort((a,b)=>{
+         const ad = String(a.door||'').toUpperCase();
+         const bd = String(b.door||'').toUpperCase();
+         if (ad < bd) return -1;
+         if (ad > bd) return 1;
+         const ac = String(a.code||'');
+         const bc = String(b.code||'');
+         if (ac < bc) return -1;
+         if (ac > bc) return 1;
+         const al = String(a.label||'').toUpperCase();
+         const bl = String(b.label||'').toUpperCase();
+         if (al < bl) return -1;
+         if (al > bl) return 1;
+         return 0;
+       });
+     } else {
+       // sort phantoms by key stamping, then door
+       phantoms.sort((a,b)=>{
+         const as = String(a.stamp||'').toUpperCase();
+         const bs = String(b.stamp||'').toUpperCase();
+         if (as < bs) return -1;
+         if (as > bs) return 1;
+         const ad = String(a.door||'').toUpperCase();
+         const bd = String(b.door||'').toUpperCase();
+         if (ad < bd) return -1;
+         if (ad > bd) return 1;
+         return 0;
+       });
+
+       // sort ghosts by code, then label
+       ghosts.sort((a,b)=>{
+         const ac = String(a.code||'');
+         const bc = String(b.code||'');
+         if (ac < bc) return -1;
+         if (ac > bc) return 1;
+         const al = String(a.label||'').toUpperCase();
+         const bl = String(b.label||'').toUpperCase();
+         if (al < bl) return -1;
+         if (al > bl) return 1;
+         return 0;
+       });
+     }
+
+     const phantomCount = phantoms.length;
+     const ghostCount   = ghosts.length;
+     let html = '';
+
+     html += `<div style="margin-bottom:10px;font-size:16px;font-weight:600;">Current Errors (Phantoms = ${phantomCount})</div>`;
+     if (!phantoms.length){
+       html += `<div class="muted">No phantom keys found.</div>`;
+     } else {
+       phantoms.forEach(p=>{
+         html += `<div class="err">Key <strong>${p.stamp}</strong> will open Door <strong>${p.door}</strong></div>`;
+       });
+     }
+
+     html += `<div style="margin-top:16px;margin-bottom:10px;font-size:16px;font-weight:600;">Future Errors (Ghosts = ${ghostCount})</div>`;
+     if (!ghosts.length){
+       html += `<div class="muted">No ghost codes found.</div>`;
+     } else {
+       ghosts.forEach(g=>{
+         html += `<div class="err">Code <strong>${g.label}</strong> will open Door <strong>${g.door}</strong></div>`;
+       });
+     }
+
+     _codingCheckLastHtml = html;
+     boxEl.innerHTML = html;
+     boxEl.scrollTop = 0;
+   }
+
 
 
 
@@ -2608,6 +2762,8 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     // ---- Keys view selection memory ----
     let _keysSelectedIdx = -1;   // remember which key is selected across re-renders
     let _codingCheckLastHtml = '';  // remember last Coding Check result
+    let _codingCheckSortMode = 'key';  // 'key' (by key/code) or 'door'
+
 
 
 
