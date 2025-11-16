@@ -222,14 +222,22 @@
       white-space:nowrap;
     }
     .pinHdr { font-weight:600; }
-
-    /* Keying grid table: lock door column + even key spacing + ellipsis */
     .kgTable {
       border-collapse:separate;  /* fix sticky-gap glitch */
       border-spacing:0;
       table-layout:fixed;        /* even column widths for keys */
     }
 
+    /* Freeze top header row (Doors ↓ + key stampings) inside scroll area */
+    .kgTable tr:first-child th {
+      position:sticky;
+      top:0;
+      z-index:3;
+      background:#0e0e0e;
+    }
+    .kgTable tr:first-child th:first-child {
+      z-index:4;                 /* keep top-left cell above others */
+    }
 
     /* Key headers (keys) – fixed width, no ellipsis */
     .kgTable th:not(:first-child) {
@@ -240,6 +248,7 @@
       text-overflow:clip;
       text-align:center;
     }
+
 
 
     /* Key cells (checkbox column) – same width as headers */
@@ -1642,6 +1651,63 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const content        = document.getElementById('systemContent');
       
       // ---- Keying Grid view (system-wide) ----
+      function buildKeyParentMap(){
+        const map = new Map();
+
+        if (!_currentSystem || !_currentSystem.rows || !_currentSystem.rows.length) {
+          return map;
+        }
+
+        const rows = _currentSystem.rows.slice();
+        const body = rows.slice(1).filter(r => r && r.length >= 2);
+
+        const labelToCode = new Map();
+
+        body.forEach(r => {
+          const label = String(r[0] || '').trim().toUpperCase();
+          const code  = String(r[1] || '').trim();
+          if (!label || !code) return;
+          labelToCode.set(label, code);
+        });
+
+        const gmkCode = labelToCode.get('GMK') || null;
+
+        body.forEach(r => {
+          const rawLabel = String(r[0] || '').trim();
+          const label    = rawLabel.toUpperCase();
+          const code     = String(r[1] || '').trim();
+          if (!label || !code) return;
+
+          let parents = [];
+          let m;
+
+          if ((m = label.match(/^MK(\d+)$/))) {
+            if (gmkCode) {
+              parents.push(gmkCode);          // MK → GMK
+            }
+          } else if ((m = label.match(/^CK(\d+)\.(\d+)$/))) {
+            const mkIdx   = parseInt(m[1], 10);
+            const mkLabel = 'MK' + mkIdx;
+            const mkCode  = labelToCode.get(mkLabel) || null;
+
+            if (mkCode) {
+              parents.push(mkCode);           // CK → MK
+            }
+            if (gmkCode) {
+              parents.push(gmkCode);          // CK → GMK as well
+            }
+          } else if (label === 'GMK') {
+            // GMK has no parents
+          } else {
+            // Any other labels: no parents
+          }
+
+          map.set(code, parents);
+        });
+
+        return map;
+      }
+
       function renderKeyingGrid(){
         if (!_currentSystem) return;
         ensureDoorsArray();
@@ -1656,7 +1722,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         // build grid table
         let html = '';
         html += `
-          <div style="overflow:auto; white-space:nowrap;">
+          <div style="max-height:60vh;overflow:auto; white-space:nowrap;">
             <table class="kgTable">
               <tr>
                 <th class="hdr muted" style="padding:6px 12px;">Doors ↓</th>
@@ -1682,18 +1748,70 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           </div>
           
           <div class="btnbar" style="justify-content:flex-end;margin-top:12px;">
+            <button id="kgAddAbove" class="tabbtn" style="display:none;">Add Key Above</button>
             <button id="kgEdit" class="tabbtn">Edit</button>
             <button id="kgCancel" disabled>Cancel</button>
           </div>
 
         `;
 
+        const codeParentMap = buildKeyParentMap();
+
         content.innerHTML = html;
 
-        const btnEdit   = document.getElementById('kgEdit');
-        const btnCancel = document.getElementById('kgCancel');
+        const btnEdit     = document.getElementById('kgEdit');
+        const btnCancel   = document.getElementById('kgCancel');
+        const btnAddAbove = document.getElementById('kgAddAbove');
 
-        let editing = false;
+        let editing      = false;
+        let addAboveMode = false;
+
+        if (btnAddAbove) {
+          btnAddAbove.style.display = 'none';
+          btnAddAbove.disabled = true;
+          btnAddAbove.classList.remove('active');
+        }
+
+        // When a checkbox is changed in Edit mode with Add Key Above selected,
+        // auto-tick parent keys (MK / GMK) for the same door.
+        const allCbs = content.querySelectorAll('input.kgCB');
+        allCbs.forEach(cb => {
+          cb.onchange = () => {
+            if (!editing || !addAboveMode || !cb.checked) return;
+
+            const di = Number(cb.dataset.di);
+            const ki = Number(cb.dataset.ki);
+            const key = keys[ki];
+            if (!key || !key.code) return;
+
+            const code = String(key.code || '').trim();
+            const parentCodes = codeParentMap.get(code);
+            if (!parentCodes || !parentCodes.length) return;
+
+            parentCodes.forEach(parentCode => {
+              if (!parentCode) return;
+
+              const parentIdx = keys.findIndex(k =>
+                String(k.code || '').trim() === String(parentCode).trim()
+              );
+              if (parentIdx < 0) return;
+
+              const pid = 'kg_' + di + '_' + parentIdx;
+              const pcb = document.getElementById(pid);
+              if (pcb) {
+                pcb.checked = true;
+              }
+            });
+          };
+        });
+
+        if (btnAddAbove) {
+          btnAddAbove.onclick = () => {
+            if (!editing) return;
+            addAboveMode = !addAboveMode;
+            btnAddAbove.classList.toggle('active', addAboveMode);
+          };
+        }
 
         btnEdit.onclick = ()=>{
           editing = !editing;
@@ -1711,6 +1829,13 @@ ${pad(beforeLine2,22)}${afterLine2}`;
             btnEdit.textContent = 'Save';
             btnEdit.classList.add('primary'); // use existing green theme
             btnCancel.disabled = false;
+
+            if (btnAddAbove) {
+              btnAddAbove.style.display = 'inline-block';
+              btnAddAbove.disabled = false;
+              addAboveMode = true;                 // default ON when entering edit
+              btnAddAbove.classList.add('active'); // highlight like other tabbtns
+            }
           } else {
             // SAVE CHANGES
             const newDoors = JSON.parse(JSON.stringify(_currentSystem.doors||[]));
@@ -1737,9 +1862,17 @@ ${pad(beforeLine2,22)}${afterLine2}`;
             btnEdit.classList.remove('primary');
             btnCancel.disabled = true;
 
+            if (btnAddAbove) {
+              addAboveMode = false;
+              btnAddAbove.classList.remove('active');
+              btnAddAbove.style.display = 'none';
+              btnAddAbove.disabled = true;
+            }
+
             renderKeyingGrid(); // reload clean
           }
         };
+
 
 
         btnCancel.onclick = ()=>{
@@ -1747,11 +1880,19 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           btnEdit.textContent = 'Edit';
           btnEdit.classList.remove('primary');
           btnCancel.disabled = true;
+
+          if (btnAddAbove) {
+            addAboveMode = false;
+            btnAddAbove.classList.remove('active');
+            btnAddAbove.style.display = 'none';
+            btnAddAbove.disabled = true;
+          }
+
           renderKeyingGrid(); // revert to original
         };
       }
 
-
+      
       function setActiveTab(name){
         const map = {
           keys   : btnKeys,
