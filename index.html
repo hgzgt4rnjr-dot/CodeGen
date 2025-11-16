@@ -2653,8 +2653,11 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
       // re-apply previous selection after render
       if (selectedIdx >= 0 && rowEls[selectedIdx]) {
-        selectRow(rowEls[selectedIdx]);
+        const el = rowEls[selectedIdx];
+        selectRow(el);
+        el.scrollIntoView({ block: "nearest" });
       }
+
 
 
       document.getElementById('keyAdd').onclick = ()=>{
@@ -3124,8 +3127,11 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
       // if we had a selection before re-render, re-apply it now
       if (selectedIdx >= 0 && rowEls[selectedIdx]) {
-        selectRow(rowEls[selectedIdx]);
+        const el = rowEls[selectedIdx];
+        selectRow(el);
+        el.scrollIntoView({ block: "nearest" });
       }
+
 
 
       document.getElementById('doorAdd').onclick = ()=>{
