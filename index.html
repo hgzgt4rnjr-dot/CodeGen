@@ -683,6 +683,20 @@
       </div>
     </div>
   </div>
+  
+  
+  <!-- Import Success Modal -->
+  <div id="importModal" class="modal" hidden>
+    <div class="backdrop" id="importBackdrop"></div>
+    <div class="dialog">
+      <h3>Import Success</h3>
+      <div id="importMsg" class="muted" style="margin:8px 0 12px 0;"></div>
+      <div class="btnbar" style="justify-content:flex-end">
+        <button class="primary" id="importDone">Done</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Door Editor Modal -->
   <div id="doorModal" class="modal" hidden>
@@ -993,6 +1007,26 @@
         varScore: variationScoreFromTMK(tmkStr)
       };
     }
+    
+    function showImportSuccess(msg){
+      const modal = document.getElementById('importModal');
+      const text  = document.getElementById('importMsg');
+      const done  = document.getElementById('importDone');
+      const bd    = document.getElementById('importBackdrop');
+
+      text.textContent = msg;
+      modal.hidden = false;
+
+      function close(){
+        modal.hidden = true;
+        done.onclick = null;
+        bd.onclick = null;
+      }
+
+      done.onclick = close;
+      bd.onclick = close;
+    }
+
 
 
     // ---------- UI wiring ----------
@@ -1590,7 +1624,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
             setSystems(current);
             renderManagerList();
-            alert(`Imported ${incoming.length} system(s).`);
+            showImportSuccess(`Imported ${incoming.length} system(s).`);
           } catch (err) {
             console.error(err);
             alert('Failed to import file. Make sure it is a JSON backup from this app.');
@@ -1974,12 +2008,15 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       <div class="btnbar" style="margin-bottom:10px;">
         <button id="ctCodingOnly" class="subtabbtn active">Coding Only</button>
         <button id="ctShowKeys" class="subtabbtn">Show Keys</button>
+        <input id="ctManualCode" type="text" inputmode="numeric" pattern="[0-9]*"
+               style="width:120px;background:#0a0a0a;border:1px solid var(--border);border-radius:12px;padding:8px 10px;font-size:14px;color:var(--fg);" />
       </div>
       <div id="codingTreeHost" class="out" style="max-height:60vh; overflow:auto;"></div>
     `;
 
     renderCodingTreeUI('coding');
   }
+
 
   // ---- Coding Tree sub-tabs renderer ----
   function renderCodingTreeUI(mode){
