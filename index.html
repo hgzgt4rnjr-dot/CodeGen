@@ -291,7 +291,7 @@
             height:100vh;text-align:center;background:transparent;">
 
     <h1 style="font-size:38px;margin-bottom:40px;color:#00ff90;font-weight:700;">
-      Welcome to CodeGen V5.5
+      Welcome to CodeGen V5.5.1
     </h1>
 
     <div style="display:flex;flex-direction:column;gap:16px;width:200px;">
@@ -586,7 +586,7 @@
        </p>
        <div class="btnbar" style="justify-content:flex-end">
          <button class="primary" id="assignWarnNo">No</button>
-         <button id="assignWarnYes" style="background:#b00020;border-color:#b00020;color:#fff;">Yes</button>
+         <button id="assignWarnYes" style="background:var(--warn); border-color:#ff5252; color:#ffffff;">Yes</button>
        </div>
      </div>
    </div>
@@ -731,15 +731,29 @@
     </div>
   </div>
 
-  <!-- Door Keying Modal (select multiple keys from Keys list) -->
+ <!-- Door Keying Modal (select multiple keys from Keys list) -->
   <div id="doorKeyingModal" class="modal" hidden>
     <div class="backdrop" id="doorKeyingBackdrop"></div>
     <div class="dialog">
       <h3>Assign Keys to Door</h3>
       <div id="doorKeyingList" class="out" style="max-height:50vh; overflow:auto; margin-top:8px;"></div>
-      <div class="btnbar" style="justify-content:flex-end">
+      <div class="btnbar" style="justify-content:flex-end; gap:8px;">
+        <button id="doorKeyingCopy">Copy Keying</button>
         <button id="doorKeyingCancel">Cancel</button>
         <button class="primary" id="doorKeyingOk">Assign</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Copy Keying Modal -->
+  <div id="copyKeyingModal" class="modal" hidden>
+    <div class="backdrop" id="copyKeyingBackdrop"></div>
+    <div class="dialog">
+      <h3>Copy Keying</h3>
+      <div id="copyKeyingList" class="out" style="max-height:50vh; overflow:auto; margin-top:8px;"></div>
+      <div class="btnbar" style="justify-content:flex-end; gap:8px;">
+        <button id="copyKeyingCancel">Cancel</button>
+        <button id="copyKeyingApply">Copy keying to 0 selected</button>
       </div>
     </div>
   </div>
@@ -781,6 +795,21 @@
       <p class="muted">Your system has been saved.</p>
       <div class="btnbar" style="justify-content:flex-end">
         <button class="primary" id="saveConfirmOk">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TMK Warning Modal -->
+  <div id="tmkWarnModal" class="modal" hidden>
+    <div class="backdrop" id="tmkWarnBackdrop"></div>
+    <div class="dialog">
+      <h3>TMK Already Used</h3>
+      <p class="muted">TMK has been previously used in:</p>
+      <div id="tmkWarnList" class="out" style="max-height:40vh; overflow:auto; margin-top:6px;"></div>
+      <p class="muted" style="margin-top:10px;">Are you sure you want to continue?</p>
+      <div class="btnbar" style="justify-content:flex-end; gap:8px; margin-top:12px;">
+        <button class="primary" id="tmkWarnNo">No</button>
+        <button id="tmkWarnYes" style="background:var(--warn); border-color:#ff5252; color:#ffffff;">Yes</button>
       </div>
     </div>
   </div>
@@ -1399,6 +1428,9 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       return { nextId, nextNum };
     }
 
+    let _pendingSaveSystem = null;
+    let _pendingSaveId = null;
+
     // Modal wiring
     document.getElementById('saveBackdrop').onclick = closeSaveModal;
     document.getElementById('saveCancel').onclick = closeSaveModal;
@@ -1417,8 +1449,35 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         rows: window._lastRows || []
       };
 
-      // Upsert into localStorage
       const systems = getSystems();
+      const existingIdx = systems.findIndex(s => s.id === id);
+      const isNew = existingIdx < 0;
+
+      const matches = systems.filter(s => s && s.tmk === system.tmk && s.id !== id);
+
+      if (isNew && matches.length > 0){
+        _pendingSaveSystem = system;
+        _pendingSaveId = id;
+
+        const listEl = document.getElementById('tmkWarnList');
+        if (listEl){
+          let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
+          matches.forEach(m=>{
+            const desc = (m.description || '').trim();
+            html += `<div><strong>${m.id}</strong>${desc ? ' — ' + desc : ''}</div>`;
+          });
+          html += '</div>';
+          listEl.innerHTML = html;
+        }
+
+        const warnModal = document.getElementById('tmkWarnModal');
+        const warnBd    = document.getElementById('tmkWarnBackdrop');
+        if (warnModal) warnModal.hidden = false;
+        if (warnBd) warnBd.hidden = false;
+
+        return;
+      }
+
       const idx = systems.findIndex(s => s.id === id);
       if (idx >= 0) systems[idx] = system; else systems.push(system);
       setSystems(systems);
@@ -1429,6 +1488,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       document.getElementById('saveConfirmBackdrop').hidden = false;
 
     };
+
 
 
     // ---- Screen Navigation ----
@@ -1523,6 +1583,50 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       if (ok) ok.onclick = closeConfirm;
     })();
 
+    (function(){
+      const modal = document.getElementById('tmkWarnModal');
+      const bd    = document.getElementById('tmkWarnBackdrop');
+      const noBtn = document.getElementById('tmkWarnNo');
+      const yesBtn = document.getElementById('tmkWarnYes');
+
+      function closeWarn(){
+        if (modal) modal.hidden = true;
+        if (bd) bd.hidden = true;
+      }
+
+      if (bd) bd.onclick = ()=>{
+        _pendingSaveSystem = null;
+        _pendingSaveId = null;
+        closeWarn();
+      };
+
+      if (noBtn) noBtn.onclick = ()=>{
+        _pendingSaveSystem = null;
+        _pendingSaveId = null;
+        closeWarn();
+      };
+
+      if (yesBtn) yesBtn.onclick = ()=>{
+        if (_pendingSaveSystem && _pendingSaveId){
+          const systems = getSystems();
+          const idx = systems.findIndex(s => s.id === _pendingSaveId);
+          if (idx >= 0) systems[idx] = _pendingSaveSystem; else systems.push(_pendingSaveSystem);
+          setSystems(systems);
+        }
+
+        _pendingSaveSystem = null;
+        _pendingSaveId = null;
+
+        closeWarn();
+        closeSaveModal();
+        const scm = document.getElementById('saveConfirmModal');
+        const scb = document.getElementById('saveConfirmBackdrop');
+        if (scm) scm.hidden = false;
+        if (scb) scb.hidden = false;
+      };
+    })();
+
+    
     // --- Help Modal ---
     (function(){
       const btn   = document.getElementById('helpBtn');
@@ -3071,10 +3175,24 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         document.getElementById('doorKeyingOk').onclick = null;
         document.getElementById('doorKeyingCancel').onclick = null;
         document.getElementById('doorKeyingBackdrop').onclick = null;
+        const copyBtn = document.getElementById('doorKeyingCopy');
+        if (copyBtn){
+          copyBtn.onclick = null;
+        }
       }
+
+      const copyBtn = document.getElementById('doorKeyingCopy');
 
       document.getElementById('doorKeyingCancel').onclick = closeKeying;
       document.getElementById('doorKeyingBackdrop').onclick = closeKeying;
+
+      if (copyBtn){
+        copyBtn.onclick = ()=>{
+          const checks = Array.from(list.querySelectorAll('input[type=checkbox][data-stamp]'));
+          const chosen = checks.filter(c=>c.checked).map(c=>String(c.getAttribute('data-stamp')||'').trim()).filter(Boolean);
+          openCopyKeyingModal(doorIdx, chosen);
+        };
+      }
 
       document.getElementById('doorKeyingOk').onclick = ()=>{
         const checks = Array.from(list.querySelectorAll('input[type=checkbox][data-stamp]'));
@@ -3088,6 +3206,121 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       modal.hidden = false;
     }
 
+
+    function openCopyKeyingModal(sourceDoorIdx, baseKeys){
+      ensureDoorsArray();
+
+      const modal  = document.getElementById('copyKeyingModal');
+      const list   = document.getElementById('copyKeyingList');
+      const apply  = document.getElementById('copyKeyingApply');
+      const cancel = document.getElementById('copyKeyingCancel');
+      const bd     = document.getElementById('copyKeyingBackdrop');
+
+      const doors = (_currentSystem && Array.isArray(_currentSystem.doors)) ? _currentSystem.doors : [];
+      let html = '';
+
+      if (!doors.length){
+        html = '<div class="muted">No doors in system.</div>';
+      } else {
+        html = '<div style="display:flex;flex-direction:column;gap:6px;">';
+        doors.forEach((d, idx)=>{
+          if (idx === sourceDoorIdx) return;
+          const stamp = String(d.stamping || '').trim();
+          const desc  = String(d.description || '').trim();
+          const id    = `copyKeying_ck_${idx}`;
+          html += `
+            <label for="${id}" style="display:grid;grid-template-columns:auto 1.2fr 2fr;align-items:center;gap:8px;padding:8px 10px;border:1px solid #1e1e1e;border-radius:10px;background:#0e0e0e;cursor:pointer;">
+              <input type="checkbox" id="${id}" data-door-idx="${idx}">
+              <div><strong>${stamp}</strong></div>
+              <div class="muted">${desc}</div>
+            </label>`;
+        });
+        html += '</div>';
+      }
+
+      list.innerHTML = html;
+
+      function getChecks(){
+        return Array.from(list.querySelectorAll('input[type=checkbox][data-door-idx]'));
+      }
+
+      function updateApplyState(){
+        const checks   = getChecks();
+        const selected = checks.filter(c=>c.checked);
+        const count    = selected.length;
+        apply.textContent = `Copy keying to ${count} selected`;
+        if (count > 0){
+          apply.classList.add('primary');
+        } else {
+          apply.classList.remove('primary');
+        }
+      }
+
+      updateApplyState();
+
+      getChecks().forEach(c=>{
+        c.onchange = updateApplyState;
+      });
+
+      function closeCopy(){
+        modal.hidden = true;
+        cancel.onclick = null;
+        bd.onclick = null;
+        apply.onclick = null;
+        getChecks().forEach(c=>{
+          c.onchange = null;
+        });
+      }
+
+      cancel.onclick = closeCopy;
+      bd.onclick = closeCopy;
+
+      apply.onclick = ()=>{
+        const checks   = getChecks();
+        const selected = checks.filter(c=>c.checked);
+        if (!selected.length) return;
+
+        ensureDoorsArray();
+
+        const srcDoor = (_currentSystem.doors && _currentSystem.doors[sourceDoorIdx]) ? _currentSystem.doors[sourceDoorIdx] : null;
+
+        let srcKeys;
+        if (Array.isArray(baseKeys)){
+          srcKeys = baseKeys.slice();  // use current selection, even if empty
+        } else if (srcDoor && Array.isArray(srcDoor.keys)){
+          srcKeys = srcDoor.keys.slice();
+        } else {
+          srcKeys = [];
+        }
+
+        if (srcDoor){
+          srcDoor.keys = srcKeys.slice();
+        }
+
+        selected.forEach(c=>{
+          const idxStr = c.getAttribute('data-door-idx');
+          const idx    = parseInt(idxStr, 10);
+          if (!Number.isNaN(idx) && _currentSystem.doors[idx]){
+            _currentSystem.doors[idx].keys = srcKeys.slice();
+          }
+        });
+
+        persistCurrentSystem();
+
+        const dkModal = document.getElementById('doorKeyingModal');
+        if (dkModal){
+          dkModal.hidden = true;
+        }
+
+        closeCopy();
+        renderDoorsView();
+      };
+
+
+      modal.hidden = false;
+    }
+
+
     // Delete Door modal wiring
     (function(){
       const m  = document.getElementById('deleteDoorModal');
@@ -3095,6 +3328,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const ok = document.getElementById('deleteDoorConfirm');
       const no = document.getElementById('deleteDoorCancel');
       const bd = document.getElementById('deleteDoorBackdrop');
+
 
       window._openDeleteDoor = function(idx){
         const it = _currentSystem.doors[idx];
