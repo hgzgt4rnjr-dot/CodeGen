@@ -2579,39 +2579,46 @@ ${pad(beforeLine2,22)}${afterLine2}`;
        modal.hidden = false;
      }
 
-     function renderKeysView(){
-       if (!_currentSystem) return;
-      ensureKeysArray();
-      const content = document.getElementById('systemContent');
-      if (!content) return;
+      function renderKeysView(){
+        if (!_currentSystem) return;
+        ensureKeysArray();
+        const content = document.getElementById('systemContent');
+        if (!content) return;
 
-      const rows = _currentSystem.keys;
+        const prevScroll = document.getElementById('keysScroll')
+          ? document.getElementById('keysScroll').scrollTop
+          : 0;
 
-      let html = '';
-      html += '<div style="max-height:60vh;overflow:auto;">';
-      html += '  <div class="keygrid">';
-      html += '    <div class="hdr muted">Stamping</div>';
-      html += '    <div class="hdr muted">Description</div>';
-      html += '    <div class="hdr muted">Code</div>';
-      html += '    <div class="hdr muted">Qty</div>';
-      html += '  </div>';
-      html += '  <div id="keyRows" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>';
-      html += '</div>';
+        const rows = _currentSystem.keys;
+
+        let html = '';
+        html += '<div id="keysScroll" style="max-height:60vh;overflow:auto;">';
+        html += '  <div class="keygrid">';
+        html += '    <div class="hdr muted">Stamping</div>';
+        html += '    <div class="hdr muted">Description</div>';
+        html += '    <div class="hdr muted">Code</div>';
+        html += '    <div class="hdr muted">Qty</div>';
+        html += '  </div>';
+        html += '  <div id="keyRows" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>';
+        html += '</div>';
 
 
-       html += `
-         <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:12px;">
-           ${rows.length === 0 ? '<button id="keyFastBuild" class="primary">Fast Build</button>' : ''}
-           <button id="keyAdd">Add</button>
-           <button id="keyEdit" disabled>Edit</button>
-           <button id="keyCut" disabled>Cut Keys</button>
-           <button id="keyDelete" class="warn" disabled>Delete Key</button>
-         </div>
-       `;
+        html += `
+          <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:12px;">
+            ${rows.length === 0 ? '<button id="keyFastBuild" class="primary">Fast Build</button>' : ''}
+            <button id="keyAdd">Add</button>
+            <button id="keyEdit" disabled>Edit</button>
+            <button id="keyCut" disabled>Cut Keys</button>
+            <button id="keyDelete" class="warn" disabled>Delete Key</button>
+          </div>
+        `;
 
-      content.innerHTML = html;
+        content.innerHTML = html;
 
-       const rowsHost = document.getElementById('keyRows');
+        const scrollBox = document.getElementById('keysScroll');
+        if (scrollBox) scrollBox.scrollTop = prevScroll;
+
+        const rowsHost = document.getElementById('keyRows');
        rowsHost.innerHTML = rows.map((k, idx) => {
          return (
            '<button type="button" class="keyrow" data-idx="'+idx+'">' +
@@ -2721,37 +2728,47 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       };
 
 
-      document.getElementById('keyDelete').onclick = ()=>{
-        if (selectedIdx < 0) return;
-        const it = _currentSystem.keys[selectedIdx];
-        if (!it) return;
+       document.getElementById('keyDelete').onclick = ()=>{
+         if (selectedIdx < 0) return;
+         const it = _currentSystem.keys[selectedIdx];
+         if (!it) return;
 
-        const m   = document.getElementById('deleteKeyModal');
-        const ln  = document.getElementById('deleteKeyLine');
-        const go  = document.getElementById('deleteKeyConfirm');
-        const no  = document.getElementById('deleteKeyCancel');
-        const bd  = document.getElementById('deleteKeyBackdrop');
+         const m   = document.getElementById('deleteKeyModal');
+         const ln  = document.getElementById('deleteKeyLine');
+         const go  = document.getElementById('deleteKeyConfirm');
+         const no  = document.getElementById('deleteKeyCancel');
+         const bd  = document.getElementById('deleteKeyBackdrop');
 
-        ln.textContent = (it.stamping||'') + ' – ' + (it.description||'');
-        m.hidden = false;
+         ln.textContent = (it.stamping||'') + ' – ' + (it.description||'');
+         m.hidden = false;
 
-        function closeDel(){
-          m.hidden = true;
-          go.onclick = null;
-          no.onclick = null;
-          bd.onclick = null;
-        }
+         function closeDel(){
+           m.hidden = true;
+           go.onclick = null;
+           no.onclick = null;
+           bd.onclick = null;
+         }
 
-        no.onclick = closeDel;
-        bd.onclick = closeDel;
+         no.onclick = closeDel;
+         bd.onclick = closeDel;
 
-        go.onclick = ()=>{
-          _currentSystem.keys.splice(selectedIdx,1);
-          persistCurrentSystem();
-          closeDel();
-          renderKeysView();
-        };
-      };
+         go.onclick = ()=>{
+           _currentSystem.keys.splice(selectedIdx,1);
+
+           if (!_currentSystem.keys.length){
+             _keysSelectedIdx = -1;
+           } else if (selectedIdx >= _currentSystem.keys.length){
+             _keysSelectedIdx = _currentSystem.keys.length - 1;
+           } else {
+             _keysSelectedIdx = selectedIdx;
+           }
+
+           persistCurrentSystem();
+           closeDel();
+           renderKeysView();
+         };
+       };
+
 
     }
 
@@ -2914,6 +2931,18 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         no.onclick = closeDel; bd.onclick = closeDel;
         ok.onclick = ()=>{
           _currentSystem.doors.splice(idx,1);
+          if (_currentSystem.doors.length > 0) {
+            let nextIdx = idx - 1;
+            if (nextIdx < 0) {
+              nextIdx = 0;
+            }
+            if (nextIdx >= _currentSystem.doors.length) {
+              nextIdx = _currentSystem.doors.length - 1;
+            }
+            _doorsSelectedIdx = nextIdx;
+          } else {
+            _doorsSelectedIdx = -1;
+          }
           persistCurrentSystem();
           closeDel();
           renderDoorsView();
