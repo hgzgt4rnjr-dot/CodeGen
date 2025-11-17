@@ -2313,7 +2313,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     _codingCheckLastHtml = '';
 
     // slow logger (60ms delay per line — adjust as needed)
-    const log = createSlowLogger(boxEl, 15);
+    const log = createSlowLogger(boxEl, 5);
 
     const doors = Array.isArray(_currentSystem.doors) ? _currentSystem.doors : [];
     const keys  = Array.isArray(_currentSystem.keys)  ? _currentSystem.keys  : [];
@@ -2539,7 +2539,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
        setTimeout(() => {
          boxEl.innerHTML = html;
          boxEl.scrollTop = 0;
-       }, 50);
+       }, 20);
      });
    }
 
