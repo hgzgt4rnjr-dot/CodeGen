@@ -966,8 +966,18 @@
         const ckAdj  = hasMaxAdjacentCutError(tmk);
         const ckDeep = hasDeepestFirstCutError(tmk);
         const ckMvr  = hasMinVariationError(tmk);
-        const ckErrMsg = [ ckAdj && "MAC Error", ckDeep && "DFC Error", ckMvr && "MCV Error" ]
-                           .filter(Boolean).join(" & ");
+        let ckErrMsg = "";
+        if (ckAdj && !ckDeep && !ckMvr) {
+          ckErrMsg = "MAC Error";
+        } else if (!ckAdj && ckDeep && !ckMvr) {
+          ckErrMsg = "DFC Error";
+        } else if (!ckAdj && !ckDeep && ckMvr) {
+          ckErrMsg = "MCV Error";
+        } else if (ckAdj && ckDeep && !ckMvr) {
+          ckErrMsg = "MAC & DFC Error";
+        } else if (!ckAdj && ckDeep && ckMvr) {
+          ckErrMsg = "DFC & MCV Error";
+        }
         if (ckErrMsg) errorCount++;
         ckTotal = 1;
 
@@ -1004,17 +1014,28 @@
           const ckLabel = `CK${i+1}.${(j+1)}`;
           const ckCode = ckCuts.join("");
           // CK error carries MK adjacent error OR own adjacent; + own deepest-first + MVR
-          const ckAdj  = mkErrAdj || hasMaxAdjacentCutError(ckCuts);
+          const ckAdj  = hasMaxAdjacentCutError(ckCuts);
           const ckDeep = hasDeepestFirstCutError(ckCuts);
           const ckMvr  = hasMinVariationError(ckCuts);
-          const ckErrMsg = [ ckAdj && "MAC Error", ckDeep && "DFC Error", ckMvr && "MCV Error" ]
-                             .filter(Boolean).join(" & ");
+          let ckErrMsg = "";
+          if (ckAdj && !ckDeep && !ckMvr) {
+            ckErrMsg = "MAC Error";
+          } else if (!ckAdj && ckDeep && !ckMvr) {
+            ckErrMsg = "DFC Error";
+          } else if (!ckAdj && !ckDeep && ckMvr) {
+            ckErrMsg = "MCV Error";
+          } else if (ckAdj && ckDeep && !ckMvr) {
+            ckErrMsg = "MAC & DFC Error";
+          } else if (!ckAdj && ckDeep && ckMvr) {
+            ckErrMsg = "DFC & MCV Error";
+          }
 
           if (ckErrMsg) errorCount++;
 
 
           lines.push(`    ${ckLabel.padEnd(8)} - ${ckCode}${ckErrMsg?("  " + ckErrMsg):""}`);
           csvRows.push([ckLabel, ckCode, ckErrMsg]);
+
         });
 
         lines.push(""); // spacer between MK groups
@@ -2166,9 +2187,9 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       ? codingLinesToHTML(lines)
       : lines.join('\n');
 
-      // swap only the error message text for key stampings
       const html = htmlRaw
-        .replace(/(?:&amp;|\s*&\s*)?(?:MAC|DFC|MCV)\s*Error\b/gi, '')
+        .replace(/(?:MAC|DFC|MCV)(?:\s*&(?:amp;)?\s*(?:MAC|DFC|MCV))?\s*Error\b/gi, '')
+        .replace(/\s*&\s*(?:MAC|DFC|MCV)\s*Error\b/gi, '')
         .replace(/&amp;/g, '')
         .replace(/((?:GMK|MK\d+|CK\d+\.\d+)\s*-\s*\d+)/g, (m)=>{
           const codeMatch = m.match(/(\d{3,})$/);
@@ -2515,10 +2536,13 @@ ${pad(beforeLine2,22)}${afterLine2}`;
      log.onDone(()=>{
        _codingCheckLastHtml = html;
        boxEl.textContent = '';
-       boxEl.innerHTML = html;
-       boxEl.scrollTop = 0;
+       setTimeout(() => {
+         boxEl.innerHTML = html;
+         boxEl.scrollTop = 0;
+       }, 50);
      });
    }
+
 
    function rebuildCodingCheckFromCache(boxEl){
      if (!boxEl || !_codingCheckLastPhantoms || !_codingCheckLastGhosts) return;
@@ -3794,11 +3818,15 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           list.forEach((it)=>{
             // colour by type (errors override)
             let line = `<strong>${it.label}</strong> – ${it.code}`;
-            if (it.type === 'GMK')       line = `<span class="tmk">${line}</span>`;
-            else if (it.type === 'MK')   line = `<span class="mk">${line}</span>`;
-            // CK stays default (white)
-            if (it.hasErr)               line = `<span class="err">${line}</span>`;
+            if (it.hasErr) {
+                line = `<span class="err">${line}</span>`;
+            } else {
+                if (it.type === 'GMK')       line = `<span class="tmk">${line}</span>`;
+                else if (it.type === 'MK')   line = `<span class="mk">${line}</span>`;
+                // CK stays default (white)
+            }
             html += `<button type="button" data-code="${it.code}" style="text-align:left;padding:8px 10px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;cursor:pointer;">${line}</button>`;
+
           });
         }
         html += '</div>';
