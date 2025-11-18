@@ -2971,34 +2971,46 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         let selectedIdx = _keysSelectedIdx;
 
         function syncSelection(){
-          const all = rowsHost.querySelectorAll('.keyrow');
-          all.forEach(btn => {
-            const i = Number(btn.dataset.idx);
-            btn.classList.toggle('selected', i === selectedIdx);
+          const rowsHost = document.getElementById('keyRows');
+          if (!rowsHost) return;
+
+          rowsHost.querySelectorAll('.keyrow').forEach((btn)=>{
+            const idx = parseInt(btn.dataset.idx, 10);
+            if (idx === selectedIdx){
+              btn.classList.add('selected');
+            } else {
+              btn.classList.remove('selected');
+            }
           });
 
-          const btnEdit   = document.getElementById('keyEdit');
-          const btnCut    = document.getElementById('keyCut');
-          const btnDelete = document.getElementById('keyDelete');
-
-          const hasSel = selectedIdx >= 0;
-
-          if (btnEdit)   btnEdit.disabled   = !hasSel;
-          if (btnCut)    btnCut.disabled    = !hasSel;
-          if (btnDelete) btnDelete.disabled = !hasSel;
+          const hasSelection = selectedIdx != null && selectedIdx >= 0;
+          document.getElementById('keyEdit').disabled   = !hasSelection;
+          document.getElementById('keyCut').disabled    = !hasSelection;
+          document.getElementById('keyDelete').disabled = !hasSelection;
         }
 
         syncSelection();
 
-        rowsHost.querySelectorAll('.keyrow').forEach(btn => {
-          btn.onclick = () => {
-            const i = Number(btn.dataset.idx);
-            if (!Number.isFinite(i)) return;
-            selectedIdx = i;
-            _keysSelectedIdx = i;
+        // NEW: when the Keys screen re-renders, scroll back to the last-selected row
+        (function(){
+          const rowsHost = document.getElementById('keyRows');
+          if (!rowsHost) return;
+          if (selectedIdx == null || selectedIdx < 0) return;
+
+          const selectedBtn = rowsHost.querySelector('.keyrow[data-idx="' + selectedIdx + '"]');
+          if (selectedBtn){
+            selectedBtn.scrollIntoView({ block: 'nearest' });
+          }
+        })();
+
+        rowsHost.querySelectorAll('.keyrow').forEach((btn)=>{
+          btn.addEventListener('click', ()=>{
+            selectedIdx = parseInt(btn.dataset.idx,10);
+            _keysSelectedIdx = selectedIdx;
             syncSelection();
-          };
+          });
         });
+
 
         const fb = document.getElementById('keyFastBuild');
         if (fb){
@@ -3566,51 +3578,104 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
        content.innerHTML = html;
 
-       const host = document.getElementById('doorRows');
-       host.innerHTML = rows.map((d, idx)=>{
-         return (
-           '<button type="button" class="doorrow" data-idx="'+idx+'">' +
-             '<div class="doorcell">'+(d.stamping||'')+'</div>' +
-             '<div class="doorcell">'+(d.description||'')+'</div>' +
-             '<div class="doorcell">'+(d.part||'')+'</div>' +
-           '</button>'
-         );
-       }).join('');
+        const host = document.getElementById('doorRows');
+        host.innerHTML = rows.map((d, idx)=>{
+          return (
+            '<button type="button" class="doorrow" data-idx="'+idx+'">' +
+              '<div class="doorcell">'+(d.stamping||'')+'</div>' +
+              '<div class="doorcell">'+(d.description||'')+'</div>' +
+              '<div class="doorcell">'+(d.part||'')+'</div>' +
+            '</button>'
+          );
+        }).join('');
 
-       let selectedIdx = (_doorsSelectedIdx >= 0 && _doorsSelectedIdx < rows.length) ? _doorsSelectedIdx : -1;
-       const rowEls = Array.from(host.querySelectorAll('.doorrow'));
-       const btnEdit    = document.getElementById('doorEdit');
-       const btnKeying  = document.getElementById('doorKeying');
-       const btnPinning = document.getElementById('doorPinning');
-       const btnDelete  = document.getElementById('doorDelete');
+        let selectedIdx = (_doorsSelectedIdx >= 0 && _doorsSelectedIdx < rows.length) ? _doorsSelectedIdx : -1;
+        const rowEls    = Array.from(host.querySelectorAll('.doorrow'));
 
-       function syncDoorButtons(){
-         const hasSelection = selectedIdx >= 0 && selectedIdx < rows.length;
-         btnEdit.disabled    = !hasSelection;
-         btnKeying.disabled  = !hasSelection;
-         btnPinning.disabled = !hasSelection;
-         btnDelete.disabled  = !hasSelection;
+        const btnEdit    = document.getElementById('doorEdit');
+        const btnKeying  = document.getElementById('doorKeying');
+        const btnPinning = document.getElementById('doorPinning');
+        const btnDelete  = document.getElementById('doorDelete');
 
-         rowEls.forEach((el, idx)=>{
-           if (idx === selectedIdx) el.classList.add('selected');
-           else el.classList.remove('selected');
-         });
-       }
+        function applyDoorSelection(){
+          const hasSelection = selectedIdx >= 0 && selectedIdx < rows.length;
 
-       rowEls.forEach((el, idx)=>{
-         el.onclick = ()=>{
-           selectedIdx = idx;
-           _doorsSelectedIdx = idx;
-           syncDoorButtons();
-         };
-       });
+          btnEdit.disabled    = !hasSelection;
+          btnKeying.disabled  = !hasSelection;
+          btnPinning.disabled = !hasSelection;
+          btnDelete.disabled  = !hasSelection;
 
-       syncDoorButtons();
+          rowEls.forEach((el)=>{
+            const idx = parseInt(el.getAttribute('data-idx'), 10);
+            if (idx === selectedIdx) el.classList.add('selected');
+            else el.classList.remove('selected');
+          });
+        }
 
-       document.getElementById('doorAdd').onclick = ()=>{
-         _editingDoorIndex = null;
-         openDoorModal({ stamping:'', description:'', part:'', notes:'' });
-       };
+        rowEls.forEach((el)=>{
+          el.onclick = ()=>{
+            selectedIdx = parseInt(el.getAttribute('data-idx'), 10);
+            _doorsSelectedIdx = selectedIdx;
+            applyDoorSelection();
+          };
+        });
+
+        // NEW: when we render Doors, jump back to the last-selected row
+        (function(){
+          if (selectedIdx == null || selectedIdx < 0) {
+            applyDoorSelection();  // still need to reset button states
+            return;
+          }
+
+          applyDoorSelection();
+
+          const selectedBtn = host.querySelector('.doorrow[data-idx="' + selectedIdx + '"]');
+          if (selectedBtn){
+            selectedBtn.scrollIntoView({ block: 'nearest' });
+          }
+        })();
+
+        // NEW: Add Door – pre-fill stamping(next) + description + part number
+        document.getElementById('doorAdd').onclick = ()=>{
+          _editingDoorIndex = null;
+
+          let baseStamp = '';
+          let baseDesc  = '';
+          let basePart  = '';
+
+          if (
+            _doorsSelectedIdx != null &&
+            _doorsSelectedIdx >= 0 &&
+            _currentSystem &&
+            Array.isArray(_currentSystem.doors) &&
+            _currentSystem.doors[_doorsSelectedIdx]
+          ){
+            const ref = _currentSystem.doors[_doorsSelectedIdx];
+            baseStamp = ref.stamping || '';
+            baseDesc  = ref.description || '';
+            basePart  = ref.part || '';
+          } else if (
+            _currentSystem &&
+            Array.isArray(_currentSystem.doors) &&
+            _currentSystem.doors.length
+          ){
+            const ref = _currentSystem.doors[_currentSystem.doors.length - 1];
+            baseStamp = ref.stamping || '';
+            baseDesc  = ref.description || '';
+            basePart  = ref.part || '';
+          }
+
+          const nextStamp = getNextStamping(baseStamp);
+
+          openDoorModal({
+            stamping: nextStamp,
+            description: baseDesc,
+            part: basePart,
+            notes: '',
+            keys: []
+          });
+        };
+
        document.getElementById('doorEdit').onclick = ()=>{
          if (selectedIdx < 0) return;
          _editingDoorIndex = selectedIdx;
