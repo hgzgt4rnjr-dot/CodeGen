@@ -82,11 +82,12 @@
     }
         /* Segmented buttons for pin size */
     .seg button.selected{
-      background: var(--accent);
-      color: #002a16;
-      border-color: #00c070;
+      color: var(--accent);
+      border-color: var(--accent);
+      background:#0b0b0b;
       font-weight: 600;
     }
+
 
     /* Keys grid */
     .keygrid {
@@ -194,6 +195,15 @@
       border-color: var(--accent);
       background:#0b0b0b;
     }
+    /* Highlight for search buttons when filtered (same as menu tabs) */
+    .search-active {
+        color: var(--accent) !important;
+        border-color: var(--accent) !important;
+        background:#0b0b0b !important;
+    }
+
+    
+  
 
     /* Coding Tree sub-tabs reuse tabbtn look */
     .subtabbtn {
@@ -328,7 +338,7 @@
 
     <div id="loadList"
          class="card"
-         style="max-height:65vh;overflow:auto;padding:0;display:flex;flex-direction:column;">
+         style="max-height:70vh;overflow:auto;padding:0;display:flex;flex-direction:column;">
       <!-- rows rendered by JS -->
     </div>
 
@@ -544,6 +554,37 @@
       </div>
     </div>
   </div>
+  
+ <!-- Key Search Modal -->
+  <div id="keySearchModal" class="modal" hidden>
+    <div class="backdrop" id="keySearchBackdrop"></div>
+    <div class="dialog">
+      <h3>Key Search</h3>
+      <div class="row">
+        <div>
+          <label for="keySearchStamping">Key Stamping</label>
+          <input id="keySearchStamping" type="text">
+        </div>
+        <div>
+          <label for="keySearchDesc">Description</label>
+          <input id="keySearchDesc" type="text">
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <div class="muted" style="font-size:13px;margin-bottom:4px;">Has been cut</div>
+        <div class="btnbar seg" style="justify-content:flex-start;margin-top:4px;">
+          <button id="keySearchAny" data-mode="any">Any</button>
+          <button id="keySearchYes" data-mode="yes">Yes</button>
+          <button id="keySearchNo" data-mode="no">No</button>
+        </div>
+      </div>
+      <div class="btnbar" style="justify-content:flex-end;margin-top:14px;">
+        <button id="keySearchClear">Clear</button>
+        <button id="keySearchCancel">Cancel</button>
+        <button id="keySearchGo" class="primary">Search</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Assign Code Modal -->
   <div id="assignModal" class="modal" hidden>
@@ -734,12 +775,49 @@
       </div>
     </div>
   </div>
+  
+  <!-- Door Search Modal -->
+  <div id="doorSearchModal" class="modal" hidden>
+    <div class="backdrop" id="doorSearchBackdrop"></div>
+    <div class="dialog">
+      <h3>Door Search</h3>
+      <div class="row">
+        <div>
+          <label for="doorSearchStamping">Door Stamping</label>
+          <input id="doorSearchStamping" type="text">
+        </div>
+        <div>
+          <label for="doorSearchDesc">Description</label>
+          <input id="doorSearchDesc" type="text">
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div>
+          <label for="doorSearchPart">Part Number</label>
+          <input id="doorSearchPart" type="text">
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <div class="muted" style="font-size:13px;margin-bottom:4px;">Has keys</div>
+        <div class="btnbar seg" style="justify-content:flex-start;margin-top:4px;">
+          <button id="doorSearchAny" data-mode="any">Any</button>
+          <button id="doorSearchYes" data-mode="yes">Yes</button>
+          <button id="doorSearchNo" data-mode="no">No</button>
+        </div>
+      </div>
+      <div class="btnbar" style="justify-content:flex-end;margin-top:14px;">
+        <button id="doorSearchClear">Clear</button>
+        <button id="doorSearchCancel">Cancel</button>
+        <button id="doorSearchGo" class="primary">Search</button>
+      </div>
+    </div>
+  </div>
 
- <!-- Door Keying Modal (select multiple keys from Keys list) -->
+  <!-- Door Keying Modal (select multiple keys from Keys list) -->
   <div id="doorKeyingModal" class="modal" hidden>
     <div class="backdrop" id="doorKeyingBackdrop"></div>
     <div class="dialog">
-      <h3>Assign Keys to Door</h3>
+      <h3 id="doorKeyingTitle">Assign Keys</h3>
       <div id="doorKeyingList" class="out" style="max-height:50vh; overflow:auto; margin-top:8px;"></div>
       <div class="btnbar" style="justify-content:flex-end; gap:8px;">
         <button id="doorKeyingCopy">Copy Keying</button>
@@ -786,6 +864,8 @@
         <div id="pinningKeysList" style="max-height:30vh; overflow:auto; padding:0; border:0; background:transparent; text-align:left;"></div>
       </div>
       <div class="btnbar" style="justify-content:flex-end; margin-top:12px;">
+        <button id="doorPinningPrev">Previous Door</button>
+        <button id="doorPinningNext">Next Door</button>
         <button id="doorPinningClose">Close</button>
       </div>
     </div>
@@ -829,6 +909,7 @@
       </div>
     </div>
   </div>
+
 
 
 
@@ -2941,11 +3022,20 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         html += '  </div>';
         html += '</div>';
 
+        const searchState = _keySearch || { stamping:'', desc:'', hasCut:'any' };
+        const hasKeyFilter =
+          (searchState.stamping && searchState.stamping.trim() !== '') ||
+          (searchState.desc && searchState.desc.trim() !== '') ||
+          (searchState.hasCut && searchState.hasCut !== 'any');
+
         // BOX 2: bottom buttons in their own card, like the top buttons card
         html += `
           <div class="card" style="padding:12px;margin:12px 0;">
             <div class="btnbar" style="justify-content:flex-end;margin-top:0;">
               ${rows.length === 0 ? '<button id="keyFastBuild" class="primary">Fast Build</button>' : ''}
+              ${hasKeyFilter
+                ? '<button id="keySearchOpen" class="search-active">🔍</button>'
+                : '<button id="keySearchOpen">🔍</button>'}
               <button id="keyAdd">Add</button>
               <button id="keyEdit" disabled>Edit</button>
               <button id="keyCut" disabled>Cut Keys</button>
@@ -2954,10 +3044,32 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           </div>
         `;
 
+
         content.innerHTML = html;
 
         const rowsHost = document.getElementById('keyRows');
+        const visibleIdx = [];
+        const search     = _keySearch || { stamping:'', desc:'', hasCut:'any' };
+
+        function matchKeySearch(k){
+          const stampTerm = (search.stamping || '').trim().toUpperCase();
+          const descTerm  = (search.desc || '').trim().toUpperCase();
+
+          if (stampTerm && !String(k.stamping || '').toUpperCase().includes(stampTerm)) return false;
+          if (descTerm  && !String(k.description || '').toUpperCase().includes(descTerm)) return false;
+
+          const qty = Number(k.qty || 0);
+          if (search.hasCut === 'yes'){
+            if (!(qty > 0)) return false;
+          } else if (search.hasCut === 'no'){
+            if (qty > 0) return false;
+          }
+          return true;
+        }
+
         rowsHost.innerHTML = rows.map((k, idx) => {
+          if (!matchKeySearch(k)) return '';
+          visibleIdx.push(idx);
           return (
             '<button type="button" class="keyrow" data-idx="'+idx+'">' +
               '<div class="keycell">'+(k.stamping||'')+'</div>' +
@@ -2967,6 +3079,8 @@ ${pad(beforeLine2,22)}${afterLine2}`;
             '</button>'
           );
         }).join('');
+
+        const visibleIdxSet = new Set(visibleIdx);
 
         let selectedIdx = _keysSelectedIdx;
 
@@ -2983,11 +3097,16 @@ ${pad(beforeLine2,22)}${afterLine2}`;
             }
           });
 
-          const hasSelection = selectedIdx != null && selectedIdx >= 0;
+          const hasSelection =
+            selectedIdx != null &&
+            selectedIdx >= 0 &&
+            visibleIdxSet.has(selectedIdx);
+
           document.getElementById('keyEdit').disabled   = !hasSelection;
           document.getElementById('keyCut').disabled    = !hasSelection;
           document.getElementById('keyDelete').disabled = !hasSelection;
         }
+
 
         syncSelection();
 
@@ -3017,6 +3136,10 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           fb.onclick = () => {
             openFastBuildModal();
           };
+        }
+        const keySearchBtn = document.getElementById('keySearchOpen');
+        if (keySearchBtn){
+          keySearchBtn.onclick = openKeySearchModal;
         }
 
         document.getElementById('keyAdd').onclick = ()=>{
@@ -3121,9 +3244,23 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       }
 
 
-    // ---- Doors view (grid + CRUD + Keying) ----
+// ---- Doors view (grid + CRUD + Keying) ----
     let _editingDoorIndex = null;
     let _doorsSelectedIdx = -1;  // remember which door is selected across re-renders
+    let _doorPinningIdx   = -1;  // current door index in Pinning modal
+
+    // ---- Search state (Keys / Doors) ----
+    let _keySearch = {
+      stamping: '',
+      desc    : '',
+      hasCut  : 'any'   // 'any' | 'yes' | 'no'
+    };
+    let _doorSearch = {
+      stamping: '',
+      desc    : '',
+      part    : '',
+      hasKeys : 'any'   // 'any' | 'yes' | 'no'
+    };
 
     // ---- Keys view selection memory ----
     let _keysSelectedIdx = -1;   // remember which key is selected across re-renders
@@ -3149,10 +3286,106 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     }
     function closeDoorModal(){ document.getElementById('doorModal').hidden = true; }
 
+    // --- Door Search Modal helpers ---
+    function openDoorSearchModal(){
+      const m = document.getElementById('doorSearchModal');
+      if (!m) return;
+
+      const state = _doorSearch || { stamping:'', desc:'', part:'', hasKeys:'any' };
+
+      const stampInput = document.getElementById('doorSearchStamping');
+      const descInput  = document.getElementById('doorSearchDesc');
+      const partInput  = document.getElementById('doorSearchPart');
+
+      const anyBtn     = document.getElementById('doorSearchAny');
+      const yesBtn     = document.getElementById('doorSearchYes');
+      const noBtn      = document.getElementById('doorSearchNo');
+
+      if (stampInput) stampInput.value = state.stamping || '';
+      if (descInput)  descInput.value  = state.desc || '';
+      if (partInput)  partInput.value  = state.part || '';
+
+      function syncSeg(){
+        const mode = state.hasKeys || 'any';
+        [anyBtn, yesBtn, noBtn].forEach((btn)=>{
+          if (!btn) return;
+          const mVal = btn.getAttribute('data-mode');
+          btn.classList.toggle('selected', mVal === mode);
+        });
+      }
+
+      if (anyBtn){
+        anyBtn.onclick = ()=>{
+          state.hasKeys = 'any';
+          _doorSearch   = state;
+          syncSeg();
+        };
+      }
+      if (yesBtn){
+        yesBtn.onclick = ()=>{
+          state.hasKeys = 'yes';
+          _doorSearch   = state;
+          syncSeg();
+        };
+      }
+      if (noBtn){
+        noBtn.onclick = ()=>{
+          state.hasKeys = 'no';
+          _doorSearch   = state;
+          syncSeg();
+        };
+      }
+
+      syncSeg();
+      m.hidden = false;
+    }
+
+    function closeDoorSearchModal(){
+      const m = document.getElementById('doorSearchModal');
+      if (m) m.hidden = true;
+    }
+
     // Door modal buttons
     // Door modal buttons
     document.getElementById('doorBackdrop').onclick = closeDoorModal;
     document.getElementById('doorCancel').onclick   = closeDoorModal;
+
+    // Door Search modal buttons
+    (function(){
+      const back  = document.getElementById('doorSearchBackdrop');
+      const clear = document.getElementById('doorSearchClear');
+      const cancel= document.getElementById('doorSearchCancel');
+      const go    = document.getElementById('doorSearchGo');
+
+      const stampInput = document.getElementById('doorSearchStamping');
+      const descInput  = document.getElementById('doorSearchDesc');
+      const partInput  = document.getElementById('doorSearchPart');
+
+      if (back)   back.onclick   = closeDoorSearchModal;
+      if (cancel) cancel.onclick = closeDoorSearchModal;
+
+      if (clear){
+        clear.onclick = ()=>{
+          _doorSearch = { stamping:'', desc:'', part:'', hasKeys:'any' };
+          closeDoorSearchModal();
+          renderDoorsView();
+        };
+      }
+
+      if (go){
+        go.onclick = ()=>{
+          const state = _doorSearch || { stamping:'', desc:'', part:'', hasKeys:'any' };
+          if (stampInput) state.stamping = stampInput.value || '';
+          if (descInput)  state.desc     = descInput.value  || '';
+          if (partInput)  state.part     = partInput.value  || '';
+          if (!state.hasKeys) state.hasKeys = 'any';
+          _doorSearch = state;
+          closeDoorSearchModal();
+          renderDoorsView();
+        };
+      }
+    })();
+
 
     function saveDoorFromModal(){
       if (!_currentSystem) return null;
@@ -3216,6 +3449,13 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const list  = document.getElementById('doorKeyingList');
       ensureDoorsArray();
       ensureKeysArray();
+
+      const titleEl = document.getElementById('doorKeyingTitle');
+      const door    = (_currentSystem && Array.isArray(_currentSystem.doors)) ? _currentSystem.doors[doorIdx] : null;
+      if (titleEl){
+        const stamp = String(door?.stamping || '').trim();
+        titleEl.textContent = stamp ? ('Assign Keys to ' + stamp) : 'Assign Keys';
+      }
 
       // build checkboxes from Keys list
       const allKeys = _currentSystem.keys || [];
@@ -3434,6 +3674,8 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       ensureDoorsArray();
       ensureKeysArray();
 
+      _doorPinningIdx = doorIdx;
+
       const modal   = document.getElementById('doorPinningModal');
       const chart   = document.getElementById('pinningChart');
       const keysBox = document.getElementById('pinningKeysList');
@@ -3535,11 +3777,41 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       modal.hidden = false;
 
       function wirePinningClose(){
-        const close = ()=>{ modal.hidden = true; };
-        document.getElementById('doorPinningClose').onclick = close;
-        document.getElementById('doorPinningBackdrop').onclick = close;
+        const close   = ()=>{ modal.hidden = true; };
+        const closeBtn= document.getElementById('doorPinningClose');
+        const backBtn = document.getElementById('doorPinningBackdrop');
+        const prevBtn = document.getElementById('doorPinningPrev');
+        const nextBtn = document.getElementById('doorPinningNext');
+
+        if (closeBtn) closeBtn.onclick = close;
+        if (backBtn)  backBtn.onclick  = close;
+
+        if (prevBtn){
+          prevBtn.onclick = ()=>{
+            if (!_currentSystem || !Array.isArray(_currentSystem.doors)) return;
+            const doors = _currentSystem.doors;
+            const idx   = (_doorPinningIdx != null ? _doorPinningIdx : doorIdx);
+            if (idx <= 0) return;
+            const newIdx = idx - 1;
+            _doorPinningIdx = newIdx;
+            openDoorPinningModal(newIdx);
+          };
+        }
+
+        if (nextBtn){
+          nextBtn.onclick = ()=>{
+            if (!_currentSystem || !Array.isArray(_currentSystem.doors)) return;
+            const doors = _currentSystem.doors;
+            const idx   = (_doorPinningIdx != null ? _doorPinningIdx : doorIdx);
+            if (idx >= doors.length - 1) return;
+            const newIdx = idx + 1;
+            _doorPinningIdx = newIdx;
+            openDoorPinningModal(newIdx);
+          };
+        }
       }
     }
+
 
 
      function renderDoorsView(){
@@ -3563,10 +3835,20 @@ ${pad(beforeLine2,22)}${afterLine2}`;
        html += '  </div>';
        html += '</div>';
 
+       const doorSearchState = _doorSearch || { stamping:'', desc:'', part:'', hasKeys:'any' };
+       const hasDoorFilter =
+         (doorSearchState.stamping && doorSearchState.stamping.trim() !== '') ||
+         (doorSearchState.desc && doorSearchState.desc.trim() !== '') ||
+         (doorSearchState.part && doorSearchState.part.trim() !== '') ||
+         (doorSearchState.hasKeys && doorSearchState.hasKeys !== 'any');
+
        // BOX 2: bottom buttons in their own card (same idea as keys bottom card)
        html += `
          <div class="card" style="padding:12px;margin:12px 0;">
            <div class="btnbar" style="justify-content:flex-end;margin-top:0;">
+             ${hasDoorFilter
+               ? '<button id="doorSearchOpen" class="search-active">🔍</button>'
+               : '<button id="doorSearchOpen">🔍</button>'}
              <button id="doorAdd">Add</button>
              <button id="doorEdit" disabled>Edit</button>
              <button id="doorKeying" disabled>Keying</button>
@@ -3579,7 +3861,30 @@ ${pad(beforeLine2,22)}${afterLine2}`;
        content.innerHTML = html;
 
         const host = document.getElementById('doorRows');
+        const visibleIdx = [];
+        const search     = _doorSearch || { stamping:'', desc:'', part:'', hasKeys:'any' };
+
+        function matchDoorSearch(d){
+          const stampTerm = (search.stamping || '').trim().toUpperCase();
+          const descTerm  = (search.desc || '').trim().toUpperCase();
+          const partTerm  = (search.part || '').trim().toUpperCase();
+
+          if (stampTerm && !String(d.stamping || '').toUpperCase().includes(stampTerm)) return false;
+          if (descTerm  && !String(d.description || '').toUpperCase().includes(descTerm)) return false;
+          if (partTerm  && !String(d.part || '').toUpperCase().includes(partTerm)) return false;
+
+          const hasKeys = Array.isArray(d.keys) && d.keys.length > 0;
+          if (search.hasKeys === 'yes'){
+            if (!hasKeys) return false;
+          } else if (search.hasKeys === 'no'){
+            if (hasKeys) return false;
+          }
+          return true;
+        }
+
         host.innerHTML = rows.map((d, idx)=>{
+          if (!matchDoorSearch(d)) return '';
+          visibleIdx.push(idx);
           return (
             '<button type="button" class="doorrow" data-idx="'+idx+'">' +
               '<div class="doorcell">'+(d.stamping||'')+'</div>' +
@@ -3588,6 +3893,8 @@ ${pad(beforeLine2,22)}${afterLine2}`;
             '</button>'
           );
         }).join('');
+
+        const visibleIdxSet = new Set(visibleIdx);
 
         let selectedIdx = (_doorsSelectedIdx >= 0 && _doorsSelectedIdx < rows.length) ? _doorsSelectedIdx : -1;
         const rowEls    = Array.from(host.querySelectorAll('.doorrow'));
@@ -3598,7 +3905,10 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         const btnDelete  = document.getElementById('doorDelete');
 
         function applyDoorSelection(){
-          const hasSelection = selectedIdx >= 0 && selectedIdx < rows.length;
+          const hasSelection =
+            selectedIdx >= 0 &&
+            selectedIdx < rows.length &&
+            visibleIdxSet.has(selectedIdx);
 
           btnEdit.disabled    = !hasSelection;
           btnKeying.disabled  = !hasSelection;
@@ -3693,6 +4003,12 @@ ${pad(beforeLine2,22)}${afterLine2}`;
          if (selectedIdx < 0) return;
          window._openDeleteDoor(selectedIdx);
        };
+       
+       const doorSearchBtn = document.getElementById('doorSearchOpen');
+       if (doorSearchBtn){
+         doorSearchBtn.onclick = openDoorSearchModal;
+       }
+
      }
 
 
@@ -3783,6 +4099,97 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     function closeKeyModal(){
       document.getElementById('keyModal').hidden = true;
     }
+
+    // --- Key Search Modal helpers ---
+    function openKeySearchModal(){
+      const m = document.getElementById('keySearchModal');
+      if (!m) return;
+
+      const state = _keySearch || { stamping:'', desc:'', hasCut:'any' };
+
+      const stampInput = document.getElementById('keySearchStamping');
+      const descInput  = document.getElementById('keySearchDesc');
+      const anyBtn     = document.getElementById('keySearchAny');
+      const yesBtn     = document.getElementById('keySearchYes');
+      const noBtn      = document.getElementById('keySearchNo');
+
+      if (stampInput) stampInput.value = state.stamping || '';
+      if (descInput)  descInput.value  = state.desc || '';
+
+      function syncSeg(){
+        const mode = state.hasCut || 'any';
+        [anyBtn, yesBtn, noBtn].forEach((btn)=>{
+          if (!btn) return;
+          const mVal = btn.getAttribute('data-mode');
+          btn.classList.toggle('selected', mVal === mode);
+        });
+      }
+
+      if (anyBtn){
+        anyBtn.onclick = ()=>{
+          state.hasCut = 'any';
+          _keySearch   = state;
+          syncSeg();
+        };
+      }
+      if (yesBtn){
+        yesBtn.onclick = ()=>{
+          state.hasCut = 'yes';
+          _keySearch   = state;
+          syncSeg();
+        };
+      }
+      if (noBtn){
+        noBtn.onclick = ()=>{
+          state.hasCut = 'no';
+          _keySearch   = state;
+          syncSeg();
+        };
+      }
+
+      syncSeg();
+      m.hidden = false;
+    }
+
+    function closeKeySearchModal(){
+      const m = document.getElementById('keySearchModal');
+      if (m) m.hidden = true;
+    }
+    
+    // Key Search modal buttons
+    (function(){
+      const back  = document.getElementById('keySearchBackdrop');
+      const clear = document.getElementById('keySearchClear');
+      const cancel= document.getElementById('keySearchCancel');
+      const go    = document.getElementById('keySearchGo');
+
+      const stampInput = document.getElementById('keySearchStamping');
+      const descInput  = document.getElementById('keySearchDesc');
+
+      if (back)   back.onclick   = closeKeySearchModal;
+      if (cancel) cancel.onclick = closeKeySearchModal;
+
+      if (clear){
+        clear.onclick = ()=>{
+          _keySearch = { stamping:'', desc:'', hasCut:'any' };
+          closeKeySearchModal();
+          renderKeysView();
+        };
+      }
+
+      if (go){
+        go.onclick = ()=>{
+          const state = _keySearch || { stamping:'', desc:'', hasCut:'any' };
+          if (stampInput) state.stamping = stampInput.value || '';
+          if (descInput)  state.desc     = descInput.value  || '';
+          if (!state.hasCut) state.hasCut = 'any';
+          _keySearch = state;
+          closeKeySearchModal();
+          renderKeysView();
+        };
+      }
+    })();
+
 
     // Key modal buttons
     document.getElementById('keyBackdrop').onclick = closeKeyModal;
@@ -4181,18 +4588,18 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       };
     }
 
-
-    
-    
     
 
 
-    // Open selected system into its own System screen
     openBtn.onclick = ()=>{
       if (!_selectedId) return;
       const systems = getSystems();
       const sys = systems.find(x => x.id === _selectedId);
       if (!sys) return;
+
+      // reset system-scoped search filters whenever a system is opened
+      _keySearch  = { stamping:'', desc:'', hasCut:'any' };
+      _doorSearch = { stamping:'', desc:'', part:'', hasKeys:'any' };
 
       _currentSystem = sys; // stash current
       if (sysViewId)   sysViewId.textContent = sys.id || '';
@@ -4204,6 +4611,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
       showSystem();
     };
+
 
 
 
