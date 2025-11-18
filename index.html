@@ -2897,16 +2897,25 @@ ${pad(beforeLine2,22)}${afterLine2}`;
        modal.hidden = false;
      }
 
-     function renderKeysView(){
-       if (!_currentSystem) return;
-      ensureKeysArray();
-      const content = document.getElementById('systemContent');
-      if (!content) return;
+      function renderKeysView(){
+        if (!_currentSystem) return;
+       ensureKeysArray();
+       const content = document.getElementById('systemContent');
+       if (!content) return;
 
-      const rows = _currentSystem.keys;
+       // Make this container transparent so inner cards look like
+       // the top buttons card vs the content card (two separate boxes).
+       content.style.background = 'transparent';
+       content.style.border = '0';
+       content.style.boxShadow = 'none';
+       content.style.padding = '0';
+       content.style.minHeight = '0';
 
-      let html = '';
-       html += '<div class="card" style="padding:0;margin-bottom:16px;">';
+       const rows = _currentSystem.keys;
+
+       let html = '';
+       // BOX 1: scrollable keys window (own card, like the top content card)
+       html += '<div class="card" style="padding:12px;margin:12px 0;">';
        html += '  <div style="max-height:60vh;overflow:auto;">';
        html += '    <div class="keygrid">';
        html += '      <div class="hdr muted">Stamping</div>';
@@ -2918,15 +2927,19 @@ ${pad(beforeLine2,22)}${afterLine2}`;
        html += '  </div>';
        html += '</div>';
 
-       html += '<div class="card" style="padding:16px;margin-top:16px;">';
-       html += '  <div class="btnbar" style="justify-content:flex-end;">';
-       html +=        (rows.length === 0 ? '<button id="keyFastBuild" class="primary">Fast Build</button>' : '');
-       html += '    <button id="keyAdd">Add</button>';
-       html += '    <button id="keyEdit" disabled>Edit</button>';
-       html += '    <button id="keyCut" disabled>Cut Keys</button>';
-       html += '    <button id="keyDelete" class="warn" disabled>Delete Key</button>';
-       html += '  </div>';
-       html += '</div>';
+       // BOX 2: bottom buttons in their own card, like the top buttons card
+       html += `
+         <div class="card" style="padding:12px;margin:12px 0;">
+           <div class="btnbar" style="justify-content:flex-end;margin-top:0;">
+             ${rows.length === 0 ? '<button id="keyFastBuild" class="primary">Fast Build</button>' : ''}
+             <button id="keyAdd">Add</button>
+             <button id="keyEdit" disabled>Edit</button>
+             <button id="keyCut" disabled>Cut Keys</button>
+             <button id="keyDelete" class="warn" disabled>Delete Key</button>
+           </div>
+         </div>
+       `;
+
 
 
 
