@@ -3777,11 +3777,21 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       modal.hidden = false;
 
       function wirePinningClose(){
-        const close   = ()=>{ modal.hidden = true; };
-        const closeBtn= document.getElementById('doorPinningClose');
-        const backBtn = document.getElementById('doorPinningBackdrop');
-        const prevBtn = document.getElementById('doorPinningPrev');
-        const nextBtn = document.getElementById('doorPinningNext');
+        const close = ()=>{
+          if (_currentSystem && Array.isArray(_currentSystem.doors)){
+            const doors = _currentSystem.doors;
+            const idx   = (_doorPinningIdx != null ? _doorPinningIdx : doorIdx);
+            if (idx >= 0 && idx < doors.length){
+              _doorsSelectedIdx = idx;
+            }
+          }
+          modal.hidden = true;
+          renderDoorsView();
+        };
+        const closeBtn = document.getElementById('doorPinningClose');
+        const backBtn  = document.getElementById('doorPinningBackdrop');
+        const prevBtn  = document.getElementById('doorPinningPrev');
+        const nextBtn  = document.getElementById('doorPinningNext');
 
         if (closeBtn) closeBtn.onclick = close;
         if (backBtn)  backBtn.onclick  = close;
@@ -3811,6 +3821,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         }
       }
     }
+
 
 
 
