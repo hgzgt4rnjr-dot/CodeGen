@@ -2897,63 +2897,57 @@ ${pad(beforeLine2,22)}${afterLine2}`;
        modal.hidden = false;
      }
 
-      function renderKeysView(){
-        if (!_currentSystem) return;
-        ensureKeysArray();
-        const content = document.getElementById('systemContent');
-        if (!content) return;
+     function renderKeysView(){
+       if (!_currentSystem) return;
+      ensureKeysArray();
+      const content = document.getElementById('systemContent');
+      if (!content) return;
 
-        const rows = _currentSystem.keys;
+      const rows = _currentSystem.keys;
 
         let html = '';
-
-        // TOP BOX – scrollable keys list
-        html += '<div style="background:#060606;border:1px solid #101010;border-radius:12px;padding:12px;margin-bottom:12px;">';
-        html += '  <div style="max-height:50vh;overflow:auto;">';
-        html += '    <div class="keygrid">';
-        html += '      <div class="hdr muted">Stamping</div>';
-        html += '      <div class="hdr muted">Description</div>';
-        html += '      <div class="hdr muted">Code</div>';
-        html += '      <div class="hdr muted">Qty</div>';
-        html += '    </div>';
-        html += '    <div id="keyRows" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>';
+        html += '<div style="max-height:60vh;overflow:auto;background:#060606;border:1px solid #101010;border-radius:12px;padding:12px;">';
+        html += '  <div class="keygrid">';
+        html += '    <div class="hdr muted">Stamping</div>';
+        html += '    <div class="hdr muted">Description</div>';
+        html += '    <div class="hdr muted">Code</div>';
+        html += '    <div class="hdr muted">Qty</div>';
         html += '  </div>';
+        html += '  <div id="keyRows" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>';
         html += '</div>';
 
-        // BOTTOM BOX – buttons
-        html += '<div style="background:#060606;border:1px solid #101010;border-radius:12px;padding:12px;margin-top:12px;">';
-        html += '  <div class="btnbar" style="justify-content:flex-end;margin-top:0;">';
-        if (rows.length === 0) {
-          html += '    <button id="keyFastBuild" class="primary">Fast Build</button>';
-        }
-        html += '    <button id="keyAdd">Add</button>';
-        html += '    <button id="keyEdit" disabled>Edit</button>';
-        html += '    <button id="keyCut" disabled>Cut Keys</button>';
-        html += '    <button id="keyDelete" class="warn" disabled>Delete Key</button>';
-        html += '  </div>';
-        html += '</div>';
 
-        content.innerHTML = html;
+        html += `
+          <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:16px;">
+            ${rows.length === 0 ? '<button id="keyFastBuild" class="primary">Fast Build</button>' : ''}
+            <button id="keyAdd">Add</button>
+            <button id="keyEdit" disabled>Edit</button>
+            <button id="keyCut" disabled>Cut Keys</button>
+            <button id="keyDelete" class="warn" disabled>Delete Key</button>
+          </div>
+        `;
 
-        const rowsHost = document.getElementById('keyRows');
-        rowsHost.innerHTML = rows.map((k, idx) => {
-          return (
-            '<button type="button" class="keyrow" data-idx="'+idx+'">' +
-              '<div class="keycell">'+(k.stamping||'')+'</div>' +
-              '<div class="keycell">'+(k.description||'')+'</div>' +
-              '<div class="keycell">'+(k.code||'')+'</div>' +
-              '<div class="keycell qty">'+((k.qty||0))+'</div>' +
-            '</button>'
-          );
-        }).join('');
 
-        const btnFast = document.getElementById('keyFastBuild');
-        if (btnFast) {
-          btnFast.onclick = () => {
-            openFastBuildModal();
-          };
-        }
+      content.innerHTML = html;
 
+       const rowsHost = document.getElementById('keyRows');
+       rowsHost.innerHTML = rows.map((k, idx) => {
+         return (
+           '<button type="button" class="keyrow" data-idx="'+idx+'">' +
+             '<div class="keycell">'+(k.stamping||'')+'</div>' +
+             '<div class="keycell">'+(k.description||'')+'</div>' +
+             '<div class="keycell">'+(k.code||'')+'</div>' +
+             '<div class="keycell qty">'+((k.qty||0))+'</div>' +
+           '</button>'
+         );
+       }).join('');
+
+       const btnFast = document.getElementById('keyFastBuild');
+       if (btnFast) {
+         btnFast.onclick = () => {
+           openFastBuildModal();
+         };
+       }
 
 
       let selectedIdx = (_keysSelectedIdx >= 0 && _keysSelectedIdx < rows.length) ? _keysSelectedIdx : -1;
