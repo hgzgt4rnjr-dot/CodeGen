@@ -2071,8 +2071,8 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
         const content = document.getElementById('systemContent');
         if (content){
-          if (name === 'keys'){
-            // Strip chrome so the two inner cards look like separate boxes
+          if (name === 'keys' || name === 'doors'){
+            // Strip chrome so the inner cards (Keys/Doors) look like separate boxes
             content.style.background = 'transparent';
             content.style.border = '0';
             content.style.boxShadow = 'none';
@@ -2088,6 +2088,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           }
         }
       }
+
 
 
       if (btnClose) btnClose.onclick = () => {
@@ -3529,131 +3530,106 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     }
 
 
-          function renderDoorsView(){
-        if (!_currentSystem) return;
-        ensureDoorsArray();
-        const content = document.getElementById('systemContent');
-        if (!content) return;
+     function renderDoorsView(){
+       if (!_currentSystem) return;
+       ensureDoorsArray();
+       const content = document.getElementById('systemContent');
+       if (!content) return;
 
-        const rows = _currentSystem.doors;
+       const rows = _currentSystem.doors;
 
-        let html = '';
-        html += `
-          <div style="background:transparent;border:0;box-shadow:none;padding:0;min-height:0;">
-        `;
+       let html = '';
+       // BOX 1: scrollable doors window in its own card (like the keys card)
+       html += '<div class="card" style="padding:12px;margin:12px 0;">';
+       html += '  <div style="max-height:60vh;overflow:auto;">';
+       html += '    <div class="doorgrid">';
+       html += '      <div class="hdr muted">Stamping</div>';
+       html += '      <div class="hdr muted">Description</div>';
+       html += '      <div class="hdr muted">Part Number</div>';
+       html += '    </div>';
+       html += '    <div id="doorRows" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>';
+       html += '  </div>';
+       html += '</div>';
 
-        html += '<div class="card" style="padding:12px;margin:12px 0;">';
-        html += '  <div style="max-height:55vh;overflow:auto;">';
-        html += '    <div class="doorgrid">';
-        html += '      <div class="hdr muted">Stamping</div>';
-        html += '      <div class="hdr muted">Description</div>';
-        html += '      <div class="hdr muted">Part Number</div>';
-        html += '    </div>';
-        html += '    <div id="doorRows" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>';
-        html += '  </div>';
-        html += '</div>';
+       // BOX 2: bottom buttons in their own card (same idea as keys bottom card)
+       html += `
+         <div class="card" style="padding:12px;margin:12px 0;">
+           <div class="btnbar" style="justify-content:flex-end;margin-top:0;">
+             <button id="doorAdd">Add</button>
+             <button id="doorEdit" disabled>Edit</button>
+             <button id="doorKeying" disabled>Keying</button>
+             <button id="doorPinning" disabled>Pinning</button>
+             <button id="doorDelete" class="warn" disabled>Delete Door</button>
+           </div>
+         </div>
+       `;
 
-        html += `
-          <div class="card" style="padding:12px;margin:12px 0;">
-            <div class="btnbar" style="justify-content:flex-end;margin-top:0;">
-              <button id="doorAdd">Add</button>
-              <button id="doorEdit" disabled>Edit</button>
-              <button id="doorKeying" disabled>Keying</button>
-              <button id="doorPinning" disabled>Pinning</button>
-              <button id="doorDelete" class="warn" disabled>Delete Door</button>
-            </div>
-          </div>
-        `;
+       content.innerHTML = html;
 
-        html += '</div>';
+       const host = document.getElementById('doorRows');
+       host.innerHTML = rows.map((d, idx)=>{
+         return (
+           '<button type="button" class="doorrow" data-idx="'+idx+'">' +
+             '<div class="doorcell">'+(d.stamping||'')+'</div>' +
+             '<div class="doorcell">'+(d.description||'')+'</div>' +
+             '<div class="doorcell">'+(d.part||'')+'</div>' +
+           '</button>'
+         );
+       }).join('');
 
-        content.innerHTML = html;
+       let selectedIdx = (_doorsSelectedIdx >= 0 && _doorsSelectedIdx < rows.length) ? _doorsSelectedIdx : -1;
+       const rowEls = Array.from(host.querySelectorAll('.doorrow'));
+       const btnEdit    = document.getElementById('doorEdit');
+       const btnKeying  = document.getElementById('doorKeying');
+       const btnPinning = document.getElementById('doorPinning');
+       const btnDelete  = document.getElementById('doorDelete');
 
+       function syncDoorButtons(){
+         const hasSelection = selectedIdx >= 0 && selectedIdx < rows.length;
+         btnEdit.disabled    = !hasSelection;
+         btnKeying.disabled  = !hasSelection;
+         btnPinning.disabled = !hasSelection;
+         btnDelete.disabled  = !hasSelection;
 
-      const host = document.getElementById('doorRows');
-      host.innerHTML = rows.map((d, idx)=>{
-        return (
-          '<button type="button" class="doorrow" data-idx="'+idx+'">' +
-            '<div class="doorcell">'+(d.stamping||'')+'</div>' +
-            '<div class="doorcell">'+(d.description||'')+'</div>' +
-            '<div class="doorcell">'+(d.part||'')+'</div>' +
-          '</button>'
-        );
-      }).join('');
+         rowEls.forEach((el, idx)=>{
+           if (idx === selectedIdx) el.classList.add('selected');
+           else el.classList.remove('selected');
+         });
+       }
 
-      let selectedIdx = (_doorsSelectedIdx >= 0 && _doorsSelectedIdx < rows.length) ? _doorsSelectedIdx : -1;
-      const rowEls = Array.from(host.querySelectorAll('.doorrow'));
-      const btnEdit    = document.getElementById('doorEdit');
-      const btnKeying  = document.getElementById('doorKeying');
-      const btnPinning = document.getElementById('doorPinning');
-      const btnDelete  = document.getElementById('doorDelete');
+       rowEls.forEach((el, idx)=>{
+         el.onclick = ()=>{
+           selectedIdx = idx;
+           _doorsSelectedIdx = idx;
+           syncDoorButtons();
+         };
+       });
 
+       syncDoorButtons();
 
-      function selectRow(el){
-        rowEls.forEach(r => r.classList.remove('selected'));
-        el.classList.add('selected');
-        selectedIdx = parseInt(el.getAttribute('data-idx'), 10);
-        _doorsSelectedIdx = selectedIdx;  // persist selection
-        btnEdit.disabled    = false;
-        btnKeying.disabled  = false;
-        btnPinning.disabled = false;
-        btnDelete.disabled  = false;
-      }
+       document.getElementById('doorAdd').onclick = ()=>{
+         _editingDoorIndex = null;
+         openDoorModal({ stamping:'', description:'', part:'', notes:'' });
+       };
+       document.getElementById('doorEdit').onclick = ()=>{
+         if (selectedIdx < 0) return;
+         _editingDoorIndex = selectedIdx;
+         openDoorModal(rows[selectedIdx] || { stamping:'', description:'', part:'', notes:'' });
+       };
+       document.getElementById('doorKeying').onclick = ()=>{
+         if (selectedIdx < 0) return;
+         openDoorKeyingModal(selectedIdx);
+       };
+       document.getElementById('doorPinning').onclick = ()=>{
+         if (selectedIdx < 0) return;
+         openDoorPinningModal(selectedIdx);
+       };
+       document.getElementById('doorDelete').onclick = ()=>{
+         if (selectedIdx < 0) return;
+         window._openDeleteDoor(selectedIdx);
+       };
+     }
 
-      rowEls.forEach(el=>{ el.onclick = ()=>selectRow(el); });
-
-      // if we had a selection before re-render, re-apply it now
-      if (selectedIdx >= 0 && rowEls[selectedIdx]) {
-        const el = rowEls[selectedIdx];
-        selectRow(el);
-        el.scrollIntoView({ block: "nearest" });
-      }
-
-
-
-      document.getElementById('doorAdd').onclick = ()=>{
-        _editingDoorIndex = null;
-
-        let baseStamp = '';
-        let baseDesc  = '';
-        let basePart  = '';
-
-        if (_doorsSelectedIdx >= 0 && _currentSystem && Array.isArray(_currentSystem.doors) && _currentSystem.doors[_doorsSelectedIdx]) {
-          const ref = _currentSystem.doors[_doorsSelectedIdx];
-          baseStamp = ref.stamping || '';
-          baseDesc  = ref.description || '';
-          basePart  = ref.part || '';
-        } else if (_currentSystem && Array.isArray(_currentSystem.doors) && _currentSystem.doors.length) {
-          const ref = _currentSystem.doors[_currentSystem.doors.length - 1];
-          baseStamp = ref.stamping || '';
-          baseDesc  = ref.description || '';
-          basePart  = ref.part || '';
-        }
-
-        const nextStamp = getNextStamping(baseStamp);
-        openDoorModal({ stamping: nextStamp, description: baseDesc, part: basePart, notes:'', keys:[] });
-      };
-
-      document.getElementById('doorEdit').onclick = ()=>{
-        if (selectedIdx < 0) return;
-        _editingDoorIndex = selectedIdx;
-        const it = _currentSystem.doors[selectedIdx] || { stamping:'', description:'', part:'', notes:'', keys:[] };
-        openDoorModal(it);
-      };
-      document.getElementById('doorKeying').onclick = ()=>{
-        if (selectedIdx < 0) return;
-        openDoorKeyingModal(selectedIdx);
-      };
-      document.getElementById('doorPinning').onclick = ()=>{
-        if (selectedIdx < 0) return;
-        openDoorPinningModal(selectedIdx);
-      };
-      document.getElementById('doorDelete').onclick = ()=>{
-        if (selectedIdx < 0) return;
-        window._openDeleteDoor(selectedIdx);
-      };
-
-    }
 
     
           // --- Auto-uppercase for Key Stamping ---
