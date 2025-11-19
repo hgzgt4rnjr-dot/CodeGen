@@ -563,6 +563,68 @@
      </div>
    </div>
 
+   <!-- Expand Design Notice Modal -->
+   <div id="expandConfirmModal" class="modal" hidden>
+     <div class="backdrop" id="expandConfirmBackdrop"></div>
+     <div class="dialog">
+       <h3>Notice</h3>
+       <p class="muted" style="margin:6px 0 12px 0;">
+         This will change the system design. We strongly recommend creating a backup before proceeding.
+       </p>
+       <div class="btnbar" style="justify-content:flex-end">
+         <button id="expandConfirmCancel" class="primary">Cancel</button>
+         <button id="expandConfirmProceed" class="warn">Proceed</button>
+       </div>
+     </div>
+   </div>
+
+   <!-- Expand Current Design Modal -->
+   <div id="expandDesignModal" class="modal" hidden>
+     <div class="backdrop" id="expandDesignBackdrop"></div>
+     <div class="dialog">
+       <h3>Expand Current Design</h3>
+       <div class="muted" style="margin:6px 0 10px 0;">
+         Available Chambers: <strong id="expandAvail">0</strong>
+       </div>
+
+       <div class="muted" style="margin:4px 0 6px 0;">Chamber Progression Allocation</div>
+       <div class="row">
+         <div>
+           <label for="expandMkAlloc">Master Keys</label>
+           <input id="expandMkAlloc" type="number" inputmode="numeric" min="0" step="1">
+         </div>
+         <div>
+           <label for="expandCkAlloc">Change Keys</label>
+           <input id="expandCkAlloc" type="number" inputmode="numeric" min="0" step="1">
+         </div>
+       </div>
+
+       <div class="muted" style="margin-top:8px;">
+         Remaining Chambers: <strong id="expandRemain">0</strong>
+       </div>
+
+       <div class="btnbar" style="justify-content:flex-end;margin-top:14px;">
+         <button id="expandDesignCancel">Cancel</button>
+         <button id="expandDesignTest" class="primary">Test</button>
+       </div>
+     </div>
+   </div>
+
+   <!-- Expanded Design Preview Modal -->
+   <div id="expandPreviewModal" class="modal" hidden>
+     <div class="backdrop" id="expandPreviewBackdrop"></div>
+     <div class="dialog">
+       <h3>Expanded Coding Tree Preview</h3>
+       <div id="expandPreviewBody"
+            class="out"
+            style="max-height:50vh;overflow:auto;margin-top:8px;"></div>
+       <div class="btnbar" style="justify-content:flex-end">
+         <button id="expandPreviewCancel">Cancel</button>
+         <button id="expandPreviewAccept" class="primary">Accept</button>
+       </div>
+     </div>
+   </div>
+
    <!-- Key Editor Modal -->
    <div id="keyModal" class="modal" hidden>
     <div class="backdrop" id="keyBackdrop"></div>
@@ -2289,7 +2351,13 @@ ${pad(beforeLine2,22)}${afterLine2}`;
                style="width:120px;background:#0a0a0a;border:1px solid var(--border);border-radius:12px;padding:8px 10px;font-size:14px;color:var(--fg);" />
       </div>
       <div id="codingTreeHost" class="out" style="max-height:60vh; overflow:auto;"></div>
+      <div class="btnbar" style="margin-top:10px;justify-content:flex-end;">
+        <button id="btnExpandDesign" class="warn">Expand Design</button>
+      </div>
     `;
+
+    const btnExpandDesign = document.getElementById('btnExpandDesign');
+    if (btnExpandDesign) btnExpandDesign.onclick = startExpandDesignFlow;
 
     renderCodingTreeUI('coding');
   }
@@ -2343,17 +2411,156 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           const codeMatch = m.match(/(\d{3,})$/);
           if (!codeMatch) return m;
           const code = codeMatch[1];
-          const stamps = keyMap[code] ? `   ${keyMap[code].join(', ')}` : '';
-          return m + stamps;
+          const stamps = keyMap[code] ? keyMap[code].join(', ') : '';
+          return stamps ? `${m} &nbsp; <span class="muted">(${stamps})</span>` : m;
         });
 
-
-
-
-
-    // render EXACTLY like Coding Only (same wrapper, no <pre>, no trimming)
-    host.innerHTML = `<div>${html}</div>`;
+      host.innerHTML = `<div>${html}</div>`;
   }
+
+
+  // ---- Expand Design flow helpers ----
+  function startExpandDesignFlow(){
+    if (!_currentSystem) return;
+
+    const arrStr = String(_currentSystem.array || '').toUpperCase();
+    const available = (arrStr.match(/0/g) || []).length;
+
+    if (!available) {
+      alert('No available chambers (0) are left in this array.');
+      return;
+    }
+
+    window._expandState = {
+      available,
+      mkAlloc: 0,
+      ckAlloc: 0
+    };
+
+    const confirmModal = document.getElementById('expandConfirmModal');
+    const btnCancel    = document.getElementById('expandConfirmCancel');
+    const btnProceed   = document.getElementById('expandConfirmProceed');
+
+    if (!confirmModal) return;
+
+    confirmModal.hidden = false;
+
+    if (btnCancel) btnCancel.onclick = () => {
+      confirmModal.hidden = true;
+      window._expandState = null;
+    };
+
+    if (btnProceed) btnProceed.onclick = () => {
+      confirmModal.hidden = true;
+      openExpandDesignModal();
+    };
+  }
+
+  function openExpandDesignModal(){
+    if (!_currentSystem || !window._expandState) return;
+
+    const state      = window._expandState;
+    const modal      = document.getElementById('expandDesignModal');
+    const spanAvail  = document.getElementById('expandAvail');
+    const spanRemain = document.getElementById('expandRemain');
+    const mkInput    = document.getElementById('expandMkAlloc');
+    const ckInput    = document.getElementById('expandCkAlloc');
+    const btnCancel  = document.getElementById('expandDesignCancel');
+    const btnTest    = document.getElementById('expandDesignTest');
+
+    if (!modal) return;
+
+    if (spanAvail)  spanAvail.textContent  = String(state.available || 0);
+    if (spanRemain) spanRemain.textContent = String(state.available || 0);
+    if (mkInput)    mkInput.value = state.mkAlloc ? String(state.mkAlloc) : '';
+    if (ckInput)    ckInput.value = state.ckAlloc ? String(state.ckAlloc) : '';
+
+    function syncRemaining(){
+      if (!window._expandState) return;
+      const avail = window._expandState.available || 0;
+
+      let mk = mkInput ? parseInt(mkInput.value, 10) : 0;
+      let ck = ckInput ? parseInt(ckInput.value, 10) : 0;
+
+      if (!Number.isFinite(mk) || mk < 0) mk = 0;
+      if (!Number.isFinite(ck) || ck < 0) ck = 0;
+
+      window._expandState.mkAlloc = mk;
+      window._expandState.ckAlloc = ck;
+
+      const used = mk + ck;
+      const rem  = avail - used;
+
+      if (spanRemain) {
+        spanRemain.textContent = String(rem);
+        spanRemain.style.color = rem < 0 ? 'var(--warn)' : '';
+      }
+    }
+
+    if (mkInput) mkInput.oninput = syncRemaining;
+    if (ckInput) ckInput.oninput = syncRemaining;
+
+    if (btnCancel) btnCancel.onclick = () => {
+      modal.hidden = true;
+    };
+
+    if (btnTest) btnTest.onclick = () => {
+      if (!window._expandState) return;
+      const avail = window._expandState.available || 0;
+      const used  = (window._expandState.mkAlloc || 0) + (window._expandState.ckAlloc || 0);
+
+      if (used > avail) {
+        alert('Allocated chambers exceed available. Adjust the numbers first.');
+        return;
+      }
+
+      modal.hidden = true;
+      showExpandPreview();
+    };
+
+    syncRemaining();
+    modal.hidden = true === false ? true : false; // force reflow-safe show
+    modal.hidden = false;
+  }
+
+  function showExpandPreview(){
+    if (!_currentSystem || !window._expandState) return;
+
+    const previewModal = document.getElementById('expandPreviewModal');
+    const body         = document.getElementById('expandPreviewBody');
+    const btnCancel    = document.getElementById('expandPreviewCancel');
+    const btnAccept    = document.getElementById('expandPreviewAccept');
+
+    if (!previewModal || !body) return;
+
+    const tmk   = String(_currentSystem.tmk || '');
+    const array = String(_currentSystem.array || '').toUpperCase();
+    const lines = _currentSystem.lines ? _currentSystem.lines.slice() : [];
+
+    let html = '';
+    html += `<div class="muted" style="margin-bottom:8px;">TMK: ${tmk} &nbsp;&nbsp; Array: ${array}</div>`;
+    html += `<div>${
+      (typeof codingLinesToHTML === 'function')
+        ? codingLinesToHTML(lines)
+        : lines.map(l => String(l)).join('<br>')
+    }</div>`;
+    html += `<div class="muted" style="margin-top:8px;font-size:12px;">
+               Preview currently uses your existing coding tree. Rotated expansion logic will plug in here.
+             </div>`;
+
+    body.innerHTML = html;
+    previewModal.hidden = false;
+
+    if (btnCancel) btnCancel.onclick = () => {
+      previewModal.hidden = true;
+    };
+
+    if (btnAccept) btnAccept.onclick = () => {
+      // TODO: when rotated expansion is implemented, apply and persist the new design here
+      previewModal.hidden = true;
+    };
+  }
+
 
   // ---- Coding Check view (Phantoms + Ghosts) ----
     function renderCodingCheckView(){
