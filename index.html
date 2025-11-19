@@ -342,10 +342,11 @@
       <!-- rows rendered by JS -->
     </div>
 
-    <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:6px;">
-      <button id="returnMainFromLoad">Return to Main</button>
-      <button id="openSystem" class="primary" disabled>Open System</button>
-    </div>
+      <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:6px;">
+        <button id="loadSearchOpen">🔍</button>
+        <button id="returnMainFromLoad">Return to Main</button>
+        <button id="openSystem" class="primary" disabled>Open System</button>
+      </div>
     <div style="height:60px;"></div>
   </div>
 
@@ -504,30 +505,66 @@
     </div>
   </div>
 
-  <!-- Save System Modal -->
-  <div id="saveModal" class="modal" hidden>
-    <div class="backdrop" id="saveBackdrop"></div>
-    <div class="dialog">
-      <h3>Save System</h3>
-      <div class="row">
-        <div>
-          <label for="sysNumber">System Number</label>
-          <input id="sysNumber" type="text" placeholder="SYS0001">
-        </div>
-        <div>
-          <label for="sysDescription">System Description</label>
-          <input id="sysDescription" type="text" placeholder="e.g. North Wing – 5-pin">
-        </div>
-      </div>
-      <div class="btnbar" style="justify-content:flex-end">
-        <button id="saveCancel">Cancel</button>
-        <button class="primary" id="saveOk">OK</button>
-      </div>
-    </div>
-  </div>
+   <!-- Save System Modal -->
+   <div id="saveModal" class="modal" hidden>
+     <div class="backdrop" id="saveBackdrop"></div>
+     <div class="dialog">
+       <h3>Save System</h3>
+       <div class="row">
+         <div>
+           <label for="sysNumber">System Number</label>
+           <input id="sysNumber" type="text" placeholder="SYS0001">
+         </div>
+         <div>
+           <label for="sysDescription">System Description</label>
+           <input id="sysDescription" type="text" placeholder="e.g. North Wing – 5-pin">
+         </div>
+       </div>
+       <div class="btnbar" style="justify-content:flex-end">
+         <button id="saveCancel">Cancel</button>
+         <button class="primary" id="saveOk">OK</button>
+       </div>
+     </div>
+   </div>
 
-  <!-- Key Editor Modal -->
-  <div id="keyModal" class="modal" hidden>
+   <!-- System Search Modal -->
+   <div id="loadSearchModal" class="modal" hidden>
+     <div class="backdrop" id="loadSearchBackdrop"></div>
+     <div class="dialog">
+       <h3>System Search</h3>
+
+       <div class="row">
+         <div>
+           <label for="sysSearchNumber">System Number</label>
+           <input id="sysSearchNumber" type="text">
+         </div>
+         <div>
+           <label for="sysSearchDesc">System Description</label>
+           <input id="sysSearchDesc" type="text">
+         </div>
+       </div>
+
+       <div class="row" style="margin-top:8px;">
+         <div>
+           <label for="sysSearchKeyStamping">Key Stamping</label>
+           <input id="sysSearchKeyStamping" type="text">
+         </div>
+         <div>
+           <label for="sysSearchDoorStamping">Lock Stamping</label>
+           <input id="sysSearchDoorStamping" type="text">
+         </div>
+       </div>
+
+       <div class="btnbar" style="justify-content:flex-end;margin-top:14px;">
+         <button id="sysSearchClear">Clear</button>
+         <button id="sysSearchCancel">Cancel</button>
+         <button id="sysSearchGo" class="primary">Search</button>
+       </div>
+     </div>
+   </div>
+
+   <!-- Key Editor Modal -->
+   <div id="keyModal" class="modal" hidden>
     <div class="backdrop" id="keyBackdrop"></div>
     <div class="dialog">
       <h3>Add / Edit Key</h3>
@@ -1612,9 +1649,18 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     const sysViewId   = document.getElementById('sysViewId');
     const sysViewDesc = document.getElementById('sysViewDesc');
 
-    let _selectedId = null;           // Load screen selection
-    let _managerSelectedId = null;    // Manager screen selection
-    let _currentSystem = null;
+     let _selectedId = null;           // Load screen selection
+     let _managerSelectedId = null;    // Manager screen selection
+     let _currentSystem = null;
+
+     // Load Screen search state
+     let _loadSearch = {
+       number   : '',
+       desc     : '',
+       keyStamp : '',
+       doorStamp: ''
+     };
+
 
 
 
@@ -3433,13 +3479,15 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       const basePart  = ref.part || '';
 
       const nextStamp = getNextStamping(baseStamp);
+      const nextDesc  = getNextDescription(baseDesc);
 
       document.getElementById('doorStamping').value = nextStamp;
-      document.getElementById('doorDesc').value     = baseDesc;
+      document.getElementById('doorDesc').value     = nextDesc;
       document.getElementById('doorPart').value     = basePart;
       document.getElementById('doorNotes').value    = '';
       _editingDoorIndex = null;
     };
+
 
 
 
@@ -3956,7 +4004,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           }
         })();
 
-        // NEW: Add Door – pre-fill stamping(next) + description + part number
+        // NEW: Add Door – pre-fill stamping(next) + description(next) + part number
         document.getElementById('doorAdd').onclick = ()=>{
           _editingDoorIndex = null;
 
@@ -3987,10 +4035,11 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           }
 
           const nextStamp = getNextStamping(baseStamp);
+          const nextDesc  = getNextDescription(baseDesc);
 
           openDoorModal({
             stamping: nextStamp,
-            description: baseDesc,
+            description: nextDesc,
             part: basePart,
             notes: '',
             keys: []
@@ -4094,9 +4143,21 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         return s;
       }
 
-
-
-
+      function getNextDescription(baseDesc){
+        if (!baseDesc) return baseDesc || '';
+        const s = String(baseDesc);
+        const m = s.match(/^(.*?)(\d+)\s*$/);
+        if (!m) return s;
+        const prefix = m[1];
+        const numStr = m[2];
+        const width  = numStr.length;
+        const n = parseInt(numStr, 10) + 1;
+        let next = String(n);
+        if (next.length < width){
+          next = next.padStart(width, '0');
+        }
+        return prefix + next;
+      }
 
     // --- Key Editor Modal helpers ---
     function openKeyModal(model){
@@ -4435,70 +4496,195 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
 
 
-    // Build the load list from local storage
-    function renderLoadList(){
-      _selectedId = null;
-      openBtn.disabled = true;
+     // Build the load list from local storage
+     function renderLoadList(){
+       _selectedId = null;
+       openBtn.disabled = true;
 
-      const systems = getSystems()
-        .slice()
-        .sort((a, b) => {
-          const na = parseInt(String(a.id || '').replace(/\D/g, ''), 10) || 0;
-          const nb = parseInt(String(b.id || '').replace(/\D/g, ''), 10) || 0;
-          return na - nb;
-        });  // numeric sort by system number
+       const allSystems = getSystems()
+         .slice()
+         .sort((a, b) => {
+           const na = parseInt(String(a.id || '').replace(/\D/g, ''), 10) || 0;
+           const nb = parseInt(String(b.id || '').replace(/\D/g, ''), 10) || 0;
+           return na - nb;
+         });  // numeric sort by system number
 
-      if (!systems.length){
-        loadListEl.innerHTML =
-          '<div style="padding:16px;color:#aaa">No saved systems found.</div>';
-        return;
-      }
+       const num  = (_loadSearch.number   || '').trim().toLowerCase();
+       const desc = (_loadSearch.desc     || '').trim().toLowerCase();
+       const key  = (_loadSearch.keyStamp || '').trim().toLowerCase();
+       const door = (_loadSearch.doorStamp|| '').trim().toLowerCase();
+
+       // apply filters
+       let systems = allSystems;
+       if (num || desc || key || door){
+         systems = allSystems.filter(s => {
+           const idStr   = String(s.id || '').toLowerCase();
+           const descStr = String(s.description || '').toLowerCase();
+
+           if (num && !idStr.includes(num)) return false;
+           if (desc && !descStr.includes(desc)) return false;
+
+           if (key){
+             const keys = s.keys || [];
+             const hasKey = keys.some(k =>
+               String(k && k.stamping || '').toLowerCase() === key
+             );
+             if (!hasKey) return false;
+           }
+
+           if (door){
+             const doors = s.doors || [];
+             const hasDoor = doors.some(d =>
+               String(d && d.stamping || '').toLowerCase() === door
+             );
+             if (!hasDoor) return false;
+           }
+
+           return true;
+         });
+       }
+       
+     // --- Load System Search Modal helpers ---
+     function openLoadSearchModal(){
+       const m = document.getElementById('loadSearchModal');
+       if (!m) return;
+
+       const state = _loadSearch || {
+         number   : '',
+         desc     : '',
+         keyStamp : '',
+         doorStamp: ''
+       };
+
+       const numInput  = document.getElementById('sysSearchNumber');
+       const descInput = document.getElementById('sysSearchDesc');
+       const keyInput  = document.getElementById('sysSearchKeyStamping');
+       const doorInput = document.getElementById('sysSearchDoorStamping');
+
+       if (numInput)  numInput.value  = state.number   || '';
+       if (descInput) descInput.value = state.desc     || '';
+       if (keyInput)  keyInput.value  = state.keyStamp || '';
+       if (doorInput) doorInput.value = state.doorStamp|| '';
+
+       m.hidden = false;
+     }
+
+     function closeLoadSearchModal(){
+       const m = document.getElementById('loadSearchModal');
+       if (m) m.hidden = true;
+     }
+
+     (function(){
+       const back   = document.getElementById('loadSearchBackdrop');
+       const clear  = document.getElementById('sysSearchClear');
+       const cancel = document.getElementById('sysSearchCancel');
+       const go     = document.getElementById('sysSearchGo');
+       const btn    = document.getElementById('loadSearchOpen');
+
+       const numInput  = document.getElementById('sysSearchNumber');
+       const descInput = document.getElementById('sysSearchDesc');
+       const keyInput  = document.getElementById('sysSearchKeyStamping');
+       const doorInput = document.getElementById('sysSearchDoorStamping');
+
+       if (btn)    btn.onclick    = openLoadSearchModal;
+       if (back)   back.onclick   = closeLoadSearchModal;
+       if (cancel) cancel.onclick = closeLoadSearchModal;
+
+       if (clear){
+         clear.onclick = ()=>{
+           _loadSearch = {
+             number   : '',
+             desc     : '',
+             keyStamp : '',
+             doorStamp: ''
+           };
+           closeLoadSearchModal();
+           renderLoadList();
+         };
+       }
+
+       if (go){
+         go.onclick = ()=>{
+           const state = _loadSearch || {
+             number   : '',
+             desc     : '',
+             keyStamp : '',
+             doorStamp: ''
+           };
+
+           if (numInput)  state.number   = (numInput.value  || '').trim();
+           if (descInput) state.desc     = (descInput.value || '').trim();
+           if (keyInput)  state.keyStamp = (keyInput.value  || '').trim();
+           if (doorInput) state.doorStamp= (doorInput.value || '').trim();
+
+           _loadSearch = state;
+           closeLoadSearchModal();
+           renderLoadList();
+         };
+       }
+     })();
 
 
-      loadListEl.innerHTML = '';
-      systems.forEach((s, idx)=>{
-        const row = document.createElement('button');
-        row.type = 'button';
-        row.style.cssText =
-          'display:flex;justify-content:space-between;align-items:center;width:100%;' +
-          'background:#0e0e0e;border:0;border-bottom:1px solid #1e1e1e;color:inherit;' +
-          'padding:14px 16px;text-align:left;cursor:pointer';
+       // toggle highlight on the 🔍 button when a filter is active
+       const loadSearchBtn = document.getElementById('loadSearchOpen');
+       if (loadSearchBtn){
+         if (num || desc || key || door){
+           loadSearchBtn.classList.add('search-active');
+         } else {
+           loadSearchBtn.classList.remove('search-active');
+         }
+       }
 
-        const left = document.createElement('div');
-        left.innerHTML =
-          `<div style="font-weight:600;letter-spacing:0.5px">${(s.id||'')}</div>` +
-          `<div style="color:#9aa; font-size:13px; margin-top:2px">${((s.description||'')+'').replace(/</g,'&lt;')}</div>`;
+       if (!systems.length){
+         // different message if there *are* systems but none match the search
+         if (allSystems.length){
+           loadListEl.innerHTML =
+             '<div style="padding:16px;color:#aaa">No systems match current search.</div>';
+         } else {
+           loadListEl.innerHTML =
+             '<div style="padding:16px;color:#aaa">No saved systems found.</div>';
+         }
+         return;
+       }
 
-        const right = document.createElement('div');
-        right.style.cssText = 'font-size:12px;color:#8a8a8a';
-        right.textContent = (s.stats && s.stats.pins) ? `${s.stats.pins}-pin` : '';
+       loadListEl.innerHTML = '';
+       systems.forEach((s)=>{
+         const row = document.createElement('button');
+         row.type = 'button';
+         row.style.cssText =
+           'display:flex;justify-content:space-between;align-items:center;width:100%;' +
+           'background:#0e0e0e;border:0;border-bottom:1px solid #1e1e1e;color:inherit;' +
+           'padding:14px 16px;text-align:left;cursor:pointer';
 
-        row.appendChild(left);
-        row.appendChild(right);
+         const left = document.createElement('div');
+         left.innerHTML =
+           `<div style="font-weight:600;letter-spacing:0.5px">${(s.id||'')}</div>` +
+           `<div style="color:#9aa; font-size:13px; margin-top:2px">${((s.description||'')+'').replace(/</g,'&lt;')}</div>`;
 
-        row.onclick = ()=>{
-          // clear previous selection visuals
-          [...loadListEl.children].forEach(el=>{
-            el.style.borderLeft = '0';
-            el.style.background = '#0e0e0e';
-          });
-          // highlight this one
-          row.style.borderLeft = '3px solid var(--accent)';
-          row.style.background = '#0b0b0b';
-          _selectedId = s.id;
-          openBtn.disabled = false;
-        };
+         const right = document.createElement('div');
+         right.style.cssText = 'font-size:12px;color:#8a8a8a';
+         right.textContent = (s.stats && s.stats.pins) ? `${s.stats.pins}-pin` : '';
 
-        // rounding on first/last
-        if (idx === 0) row.style.borderTopLeftRadius = row.style.borderTopRightRadius = '12px';
-        if (idx === systems.length-1){
-          row.style.borderBottom = '0';
-          row.style.borderBottomLeftRadius = row.style.borderBottomRightRadius = '12px';
-        }
+         row.appendChild(left);
+         row.appendChild(right);
 
-        loadListEl.appendChild(row);
-      });
-    }
+         row.onclick = ()=>{
+           // clear previous selection visuals
+           Array.from(loadListEl.children).forEach(el=>{
+             el.style.borderLeft = '0';
+             el.style.background = '#0e0e0e';
+           });
+           // highlight this one
+           row.style.borderLeft = '3px solid var(--accent)';
+           row.style.background = '#0b0b0b';
+           _selectedId = s.id;
+           openBtn.disabled = false;
+         };
+
+         loadListEl.appendChild(row);
+       });
+     }
+
     // System Manager: render list
     function renderManagerList(){
       _managerSelectedId = null;
