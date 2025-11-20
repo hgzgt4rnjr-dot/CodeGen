@@ -1089,8 +1089,14 @@ function buildCodingTree(tmkStr, arrayStr){
       const tmk    = tmkStr.split('').map(d=>+d);
       const arrStr = String(arrayStr || '');
 
-      const masterPos = [...arrStr]
-        .map((c,i)=>c.toUpperCase()==='M'?i:-1)
+      // “True” M designations (master design size)
+      const masterDesignPos = [...arrStr]
+        .map((c,i)=>c==='M'?i:-1)
+        .filter(i=>i>=0);
+
+      // Rotational MK slots (lower-case m)
+      const masterRotatePos = [...arrStr]
+        .map((c,i)=>c==='m'?i:-1)
         .filter(i=>i>=0);
 
       // “True” C designations (design size)
@@ -1104,19 +1110,64 @@ function buildCodingTree(tmkStr, arrayStr){
         .filter(i=>i>=0);
 
 
-      // Generate all Master Keys by varying the M positions with same-parity progressions (exclude original)
+      // Generate all Master Keys with rotation, mirroring CK rotation:
+      //   - masterDesignPos = true M designations (design size, r)
+      //   - masterRotatePos = m slots the M-block can rotate into
+      // We take every subset of size r from (masterDesignPos ∪ masterRotatePos),
+      // run the normal same-parity progression on those positions,
+      // and union all resulting MK codes (no duplicates).
       const masterKeys = [];
-      (function genMK(cuts, idx){
-        if (idx >= masterPos.length){ masterKeys.push(cuts.slice()); return; }
-        const pos = masterPos[idx];
-        const orig = tmk[pos];
-        const options = (orig % 2 === 0) ? evenSet(orig) : oddSet(orig);
-        for (const depth of options){
-          cuts[pos] = depth;
-          genMK(cuts, idx+1);
+      (function genMKs(base){
+        // No true M designations → treat TMK itself as the single "MK1"
+        if (!masterDesignPos.length){
+          masterKeys.push(base.slice());
+          return;
         }
-        cuts[pos] = orig;
-      })(tmk.slice(), 0);
+
+        const region = [...masterDesignPos, ...masterRotatePos]
+          .filter((v,i,a)=>v>=0 && a.indexOf(v)===i)
+          .sort((a,b)=>a-b);
+
+        const r    = masterDesignPos.length;
+        const seen = new Set();
+
+        function genForPositions(posList){
+          (function rec(cuts, idx){
+            if (idx >= posList.length){
+              const codeStr = cuts.join('');
+              if (!seen.has(codeStr)){
+                seen.add(codeStr);
+                masterKeys.push(cuts.slice());
+              }
+              return;
+            }
+            const pos   = posList[idx];
+            const orig  = base[pos];
+            const opts  = (orig % 2 === 0) ? evenSet(orig) : oddSet(orig);
+
+            for (const depth of opts){
+              cuts[pos] = depth;
+              rec(cuts, idx+1);
+            }
+            cuts[pos] = orig;
+          })(base.slice(), 0);
+        }
+
+        function choose(start, picked){
+          if (picked.length === r){
+            genForPositions(picked.slice());
+            return;
+          }
+          for (let i=start;i<region.length;i++){
+            picked.push(region[i]);
+            choose(i+1, picked);
+            picked.pop();
+          }
+        }
+
+        choose(0, []);
+      })(tmk.slice());
+
 
       // For each MK, generate all CKs:
       //   - changePos = true C designations (design size, k)
@@ -1214,7 +1265,7 @@ function buildCodingTree(tmkStr, arrayStr){
 
 
       let mkCount=0, ckTotal=0, errorCount=0;
-       if (masterPos.length === 0 && changePos.length === 0) {
+      if (masterDesignPos.length === 0 && masterRotatePos.length === 0 && changePos.length === 0) {
         const ckAdj  = hasMaxAdjacentCutError(tmk);
         const ckDeep = hasDeepestFirstCutError(tmk);
         const ckMvr  = hasMinVariationError(tmk);
@@ -1243,7 +1294,42 @@ function buildCodingTree(tmkStr, arrayStr){
         return { lines, csvRows, mkCount, ckTotal, errorCount };
       }
 
-      masterKeys.forEach((mkCuts, i)=>{
+const mkMeta = masterKeys.map((mkCuts, idx)=>{
+        const diffs = [];
+        for (let p=0; p<mkCuts.length && p<tmk.length; p++){
+          if (mkCuts[p] !== tmk[p]) diffs.push(p);
+        }
+
+        let rotCount = 0;
+        let minRot   = Infinity;
+        for (const pos of diffs){
+          if (masterRotatePos.includes(pos)){
+            rotCount++;
+            if (pos < minRot) minRot = pos;
+          }
+        }
+
+        const isBase = (rotCount === 0);
+
+        return { idx, mkCuts, rotCount, minRot, isBase };
+      });
+
+      mkMeta.sort((a,b)=>{
+        // 1) original, non-rotated MKs first
+        if (a.isBase && !b.isBase) return -1;
+        if (b.isBase && !a.isBase) return 1;
+
+        // 2) then by how many rotated m-chambers are used
+        if (a.rotCount !== b.rotCount) return a.rotCount - b.rotCount;
+
+        // 3) then by earliest rotated chamber index
+        if (a.minRot !== b.minRot) return a.minRot - b.minRot;
+
+        // 4) stable fallback to original generation order
+        return a.idx - b.idx;
+      });
+
+      mkMeta.forEach(({ mkCuts }, i)=>{
         mkCount++;
         const mkLabel = `MK${i+1}`;
         const mkErrAdj  = hasMaxAdjacentCutError(mkCuts);
@@ -2673,63 +2759,77 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     const chars    = rawArray.split('');
 
     const ckAlloc = Math.max(0, (state && state.ckAlloc) || 0);
-    const mkAlloc = (state && state.mkAlloc) || 0;
+    const mkAlloc = Math.max(0, (state && state.mkAlloc) || 0);
 
-    // MK rotation will be done later – ignore MK allocation for now
+    // Nothing allocated → just rebuild with current array
+    if (ckAlloc <= 0 && mkAlloc <= 0){
+      const tree = buildCodingTree(tmkStr, rawArray);
+      return {
+        array:   rawArray,
+        lines:   tree.lines || [],
+        csvRows: tree.csvRows || []
+      };
+    }
+
+    // ---------- CK rotation (C → c), same as before ----------
+    if (ckAlloc > 0){
+      const changeOrRotIdx = chars
+        .map((c,i)=>(c==='C' || c==='c') ? i : -1)
+        .filter(i=>i>=0);
+
+      if (changeOrRotIdx.length){
+        const rightmostC = Math.max(...changeOrRotIdx);
+
+        // Candidate zeros to convert to rotated CK slots: zeros LEFT of the C/c block
+        const zeroIdxForC = chars
+          .map((c,i)=> c==='0' ? i : -1)
+          .filter(i=>i>=0 && i < rightmostC);
+
+        if (zeroIdxForC.length){
+          let remainingC = Math.min(ckAlloc, zeroIdxForC.length);
+
+          // Work from right-most zero leftwards:
+          //   00000C → 0000cC
+          //   0000CC → 000cCC
+          //   000cCC → 00ccCC
+          for (let i = zeroIdxForC.length - 1; i >= 0 && remainingC > 0; i--){
+            const pos = zeroIdxForC[i];
+            chars[pos] = 'c';
+            remainingC--;
+          }
+        }
+      }
+    }
+
+    // ---------- MK rotation (M → m), mirroring CK rules ----------
     if (mkAlloc > 0){
-      console.warn('MK rotation logic not implemented yet – mkAlloc will be ignored.');
-    }
+      // Treat both M and m as the master block for anchoring rotations
+      const masterOrRotIdx = chars
+        .map((c,i)=> (c==='M' || c==='m') ? i : -1)
+        .filter(i=>i>=0);
 
-    // No CK rotation requested → just rebuild with current array
-    if (ckAlloc <= 0){
-      const tree = buildCodingTree(tmkStr, rawArray);
-      return {
-        array:   rawArray,
-        lines:   tree.lines || [],
-        csvRows: tree.csvRows || []
-      };
-    }
+      if (masterOrRotIdx.length){
+        const rightmostM = Math.max(...masterOrRotIdx);
 
-    // We can only rotate relative to an existing C/c block
-    const changeOrRotIdx = chars
-      .map((c,i)=>(c==='C' || c==='c') ? i : -1)
-      .filter(i=>i>=0);
+        // Candidate zeros to convert to rotated MK slots: zeros LEFT of the M/m block
+        const zeroIdxForM = chars
+          .map((c,i)=> c==='0' ? i : -1)
+          .filter(i=>i>=0 && i < rightmostM);
 
-    if (!changeOrRotIdx.length){
-      const tree = buildCodingTree(tmkStr, rawArray);
-      return {
-        array:   rawArray,
-        lines:   tree.lines || [],
-        csvRows: tree.csvRows || []
-      };
-    }
+        if (zeroIdxForM.length){
+          let remainingM = Math.min(mkAlloc, zeroIdxForM.length);
 
-    const rightmost = Math.max(...changeOrRotIdx);
-
-    // Candidate zeros to convert to rotated slots: zeros LEFT of the C/c block
-    const zeroIdx = chars
-      .map((c,i)=> c==='0' ? i : -1)
-      .filter(i=>i>=0 && i < rightmost);
-
-    if (!zeroIdx.length){
-      const tree = buildCodingTree(tmkStr, rawArray);
-      return {
-        array:   rawArray,
-        lines:   tree.lines || [],
-        csvRows: tree.csvRows || []
-      };
-    }
-
-    let remaining = Math.min(ckAlloc, zeroIdx.length);
-
-    // Work from right-most zero leftwards:
-    //   00000C → 0000cC
-    //   0000CC → 000cCC
-    //   000cCC → 00ccCC
-    for (let i = zeroIdx.length - 1; i >= 0 && remaining > 0; i--){
-      const pos = zeroIdx[i];
-      chars[pos] = 'c';
-      remaining--;
+          // Same pattern: work from right-most zero leftwards, but mark as 'm'
+          //   00000M  → 0000mM
+          //   0000MM  → 000mMM
+          //   000mMM  → 00mmMM
+          for (let i = zeroIdxForM.length - 1; i >= 0 && remainingM > 0; i--){
+            const pos = zeroIdxForM[i];
+            chars[pos] = 'm';
+            remainingM--;
+          }
+        }
+      }
     }
 
     const newArray = chars.join('');
@@ -2742,126 +2842,89 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     };
   }
 
-  
-  function applyCkExpansion(tmkStr, arrayStr, state){
-    const baseArray = String(arrayStr || '').toUpperCase();
-    const arr = baseArray.split('');
-
-    // Find all zero chambers that can be reused
-    const zeroIdx = [];
-    for (let i = 0; i < arr.length; i++){
-      if (arr[i] === '0') zeroIdx.push(i);
-    }
-
-    const ckAlloc = Math.max(
-      0,
-      Math.min((state && state.ckAlloc) || 0, zeroIdx.length)
-    );
-    const mkAlloc = (state && state.mkAlloc) || 0;
-
-    // MK rotation not implemented yet (explicit for now)
-    if (mkAlloc > 0){
-      alert('Master Key rotation logic is not implemented yet. MK allocation will be ignored for now.');
-    }
-
-    // Turn right-most zeros into extra C chambers (closest to existing change bank)
-    const ckRotIdx = [];
-    for (let n = 0; n < ckAlloc; n++){
-      const idx = zeroIdx[zeroIdx.length - 1 - n];
-      arr[idx]  = 'C';
-      ckRotIdx.push(idx);
-    }
-
-    const newArray = arr.join('');
-    const tree     = buildCodingTree(tmkStr, newArray);
-    const lines    = tree.lines ? tree.lines.slice() : [];
-
-    // Inject a marker line with ↻ under the rotated change chambers
-    const arrLineIdx = lines.findIndex(l => /^Array\s*:/.test(String(l)));
-    if (arrLineIdx >= 0 && ckRotIdx.length){
-      const arrLine   = String(lines[arrLineIdx]);
-      const suffix    = newArray;
-      const prefixLen = Math.max(0, arrLine.length - suffix.length);
-
-      const markerChars = suffix.split('').map(() => ' ');
-      ckRotIdx.forEach(idx => {
-        if (idx >= 0 && idx < markerChars.length){
-          markerChars[idx] = '↻';
-        }
-      });
-
-      const markerLine = ' '.repeat(prefixLen) + markerChars.join('');
-      lines.splice(arrLineIdx + 1, 0, markerLine);
-    }
-
-    return {
-      array:   newArray,
-      lines,
-      csvRows: tree.csvRows || []
-    };
-  }
 
 
-  function showExpandPreview(){
+function showExpandPreview(){
     if (!_currentSystem || !window._expandState) return;
 
     const previewModal = document.getElementById('expandPreviewModal');
     const body         = document.getElementById('expandPreviewBody');
     const btnCancel    = document.getElementById('expandPreviewCancel');
     const btnAccept    = document.getElementById('expandPreviewAccept');
+    const bd           = document.getElementById('expandPreviewBackdrop');
 
     if (!previewModal || !body) return;
 
     const tmk       = String(_currentSystem.tmk   || '');
     const baseArray = String(_currentSystem.array || '');
 
-    // Build the expanded design (CK rotations only for now)
+    // Build the expanded design (rotations applied)
     const expanded = applyCkRotation(tmk, baseArray, window._expandState || {});
     const array    = String(expanded.array || '').toUpperCase();
     const lines    = expanded.lines || [];
+    const csvRows  = expanded.csvRows || [];
 
-    let html = '';
-    html += `<div class="muted" style="margin-bottom:8px;">TMK: ${tmk} &nbsp;&nbsp; Array: ${array}</div>`;
-    html += `<div>${
-      (typeof codingLinesToHTML === 'function')
+    // ---- Build Show Keys-style view for the expanded tree ----
+    const keyMap = {};
+    (_currentSystem.keys || []).forEach(k => {
+        const c = String(k.code || '').trim();
+        const s = String(k.stamping || '').trim();
+        if (!c || !s) return;
+        if (!keyMap[c]) keyMap[c] = [];
+        keyMap[c].push(s);
+    });
+
+    let htmlRaw = (typeof codingLinesToHTML === 'function')
         ? codingLinesToHTML(lines)
-        : lines.map(l => String(l)).join('<br>')
-    }</div>`;
+        : lines.map(l => String(l)).join('<br>');
 
-    body.innerHTML = html;
+    if (!htmlRaw || typeof htmlRaw !== 'string') {
+        htmlRaw = String(htmlRaw || '');
+    }
+
+    const htmlTree = htmlRaw
+        .replace(/(?:MAC|DFC|MCV)(?:\s*&(?:amp;)?\s*(?:MAC|DFC|MCV))?\s*Error\b/gi, '')
+        .replace(/\s*&\s*(?:MAC|DFC|MCV)\s*Error\b/gi, '')
+        .replace(/&amp;/g, '&')
+        .replace(/((?:GMK|MK\d+|CK\d+\.\d+)\s*-\s*\d+)/g, (m) => {
+            const codeMatch = m.match(/(\d{3,})$/);
+            if (!codeMatch) return m;
+            const code   = codeMatch[1];
+            const stamps = keyMap[code] ? `   (${keyMap[code].join(', ')})` : '';
+            return m + stamps;
+        });
+
+    body.innerHTML = htmlTree;
     previewModal.hidden = false;
 
-    if (btnCancel) btnCancel.onclick = () => {
-      previewModal.hidden = true;
-    };
+    function closePreview(){
+        previewModal.hidden = true;
+        if (bd)        bd.onclick        = null;
+        if (btnCancel) btnCancel.onclick = null;
+        if (btnAccept) btnAccept.onclick = null;
+    }
+
+    if (bd)        bd.onclick        = closePreview;
+    if (btnCancel) btnCancel.onclick = closePreview;
 
     if (btnAccept) btnAccept.onclick = () => {
-      // Recompute in case state changed, then commit
-      const final = applyCkRotation(tmk, baseArray, window._expandState || {});
+        // Commit the expanded design into the current system
+        _currentSystem.array = array;
+        _currentSystem.lines = lines.slice();
+        _currentSystem.rows  = csvRows.slice();  // <-- Fast Build now sees updated tree
 
-      _currentSystem.array = final.array;   // this may contain 'c'
-      _currentSystem.lines = final.lines;   // includes ↻ marker line
+        const pins = String(_currentSystem.tmk || '').length;
+        _currentSystem.stats = Object.assign({}, _currentSystem.stats || {}, {
+            pins
+        });
 
-      // *** NEW: keep rows / CSV in sync so Fast Build uses the rotated design ***
-      if (Array.isArray(final.csvRows) && final.csvRows.length){
-        // first row is header, rest are CK rows (same shape as when saving from Create)
-        _currentSystem.csv  = final.csvRows.slice();
-        _currentSystem.rows = final.csvRows.slice(1);
-      }
-
-      if (typeof persistCurrentSystem === 'function'){
         persistCurrentSystem();
-      }
-
-      previewModal.hidden   = true;
-      window._expandState   = null;
-
-      // Refresh Coding Tree tab
-      if (typeof renderCodingTreeUI === 'function'){
         renderCodingTreeUI('coding');
-      }
+        window._expandState = null;
+        closePreview();
     };
-  }
+}
+
 
 
 
