@@ -42,6 +42,7 @@
     button:active{transform:translateY(1px)}
     .muted{color:var(--muted)}
     .out{white-space:pre-wrap;background:#060606;border:1px solid #101010;border-radius:12px;padding:12px;max-height:50vh;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;line-height:1.35}
+    .rotSym{font-size:11px;line-height:1.35;position:relative;top:-3px;}
     .ok{color:var(--fg)}
     .mk{color:var(--mk)}
     .err{color:var(--danger)}
@@ -1084,10 +1085,24 @@
 
 
     // ---------- Core generation (ported from your Python) ----------
-    function buildCodingTree(tmkStr, arrayStr){
-      const tmk = tmkStr.split('').map(d=>+d);
-      const masterPos = [...arrayStr].map((c,i)=>c.toUpperCase()==='M'?i:-1).filter(i=>i>=0);
-      const changePos = [...arrayStr].map((c,i)=>c.toUpperCase()==='C'?i:-1).filter(i=>i>=0);
+function buildCodingTree(tmkStr, arrayStr){
+      const tmk    = tmkStr.split('').map(d=>+d);
+      const arrStr = String(arrayStr || '');
+
+      const masterPos = [...arrStr]
+        .map((c,i)=>c.toUpperCase()==='M'?i:-1)
+        .filter(i=>i>=0);
+
+      // “True” C designations (design size)
+      const changePos = [...arrStr]
+        .map((c,i)=>c==='C'?i:-1)
+        .filter(i=>i>=0);
+
+      // Rotational CK slots (lower-case c)
+      const rotatePos = [...arrStr]
+        .map((c,i)=>c==='c'?i:-1)
+        .filter(i=>i>=0);
+
 
       // Generate all Master Keys by varying the M positions with same-parity progressions (exclude original)
       const masterKeys = [];
@@ -1103,30 +1118,87 @@
         cuts[pos] = orig;
       })(tmk.slice(), 0);
 
-      // For each MK, generate all CKs by varying the C positions with same-parity progressions (exclude original)
+      // For each MK, generate all CKs:
+      //   - changePos = true C designations (design size, k)
+      //   - rotatePos = c slots the C-block can rotate into
+      // We take every subset of size k from (changePos ∪ rotatePos),
+      // run the normal same-parity progression on those positions,
+      // and union all resulting codes (no duplicates).
       function genCKs(base){
-        const res=[];
-        (function rec(cuts, idx){
-          if (idx >= changePos.length){ res.push(cuts.slice()); return; }
-          const pos = changePos[idx];
-          const orig = cuts[pos];
-          const options = (orig % 2 === 0) ? evenSet(orig) : oddSet(orig);
-          for (const depth of options){
-            cuts[pos] = depth;
-            rec(cuts, idx+1);
+        if (!changePos.length) return [];
+
+        const region = [...changePos, ...rotatePos]
+          .filter((v,i,a)=>v>=0 && a.indexOf(v)===i)
+          .sort((a,b)=>a-b);
+
+        const k    = changePos.length;
+        const res  = [];
+        const seen = new Set();
+
+        function genForPositions(posList){
+          (function rec(cuts, idx){
+            if (idx >= posList.length){
+              const codeStr = cuts.join('');
+              if (!seen.has(codeStr)){
+                seen.add(codeStr);
+                res.push(cuts.slice());
+              }
+              return;
+            }
+            const pos   = posList[idx];
+            const orig  = cuts[pos];
+            const opts  = (orig % 2 === 0) ? evenSet(orig) : oddSet(orig);
+
+            for (const depth of opts){
+              cuts[pos] = depth;
+              rec(cuts, idx+1);
+            }
+            cuts[pos] = orig;
+          })(base.slice(), 0);
+        }
+
+        function choose(start, picked){
+          if (picked.length === k){
+            genForPositions(picked.slice());
+            return;
           }
-          cuts[pos] = orig;
-        })(base.slice(), 0);
+          for (let i=start;i<region.length;i++){
+            picked.push(region[i]);
+            choose(i+1, picked);
+            picked.pop();
+          }
+        }
+
+        choose(0, []);
         return res;
       }
 
-      // Assemble printable lines and CSV rows
+
       const lines=[];
       const csvRows=[["Key","Code","Error"]];
 
+      const displayArray = String(arrayStr || '').toUpperCase();
+
       lines.push(`TMK   : ${tmkStr}`);
-      lines.push(`Array : ${arrayStr}`);
+
+      const arrayLine = `Array : ${displayArray}`;
+      lines.push(arrayLine);
+
+      // Marker line: ↻ under any rotated CK/MK chambers (c / m)
+      if (/[cm]/.test(arrStr)){
+        const suffix    = displayArray;
+        const prefixLen = arrayLine.length - suffix.length;
+
+        const markerChars = suffix.split('').map((ch, idx) =>
+          (arrStr[idx] === 'c' || arrStr[idx] === 'm') ? '↻' : ' '
+        );
+
+        const markerLine = ' '.repeat(prefixLen) + markerChars.join('');
+        lines.push(markerLine);
+      }
+
       lines.push("");
+
 
       // Add TMK/Array at the top of CSV (after header)
       csvRows.push(["TMK", tmkStr, ""]);
@@ -1189,7 +1261,67 @@
         csvRows.push([mkLabel, mkCode, mkErrMsg]);
 
         const cks = genCKs(mkCuts);
-        cks.forEach((ckCuts, j)=>{
+
+        // ---- Group CKs by which chambers are progressed (diff positions) ----
+        const changeSet = new Set(changePos);
+        const rotSet    = new Set(rotatePos);
+
+        const bankMap = new Map();
+        cks.forEach((ckCuts, jIdx)=>{
+          const diffs = [];
+          for (let p=0; p<mkCuts.length; p++){
+            if (ckCuts[p] !== mkCuts[p]) diffs.push(p);
+          }
+          const key = diffs.join(',');
+
+          if (!bankMap.has(key)){
+            const rotCount = diffs.filter(pos => rotSet.has(pos)).length;
+            const minRot   = diffs.reduce((m,pos)=> rotSet.has(pos) && pos < m ? pos : m, Infinity);
+            const isBase =
+              rotCount === 0 &&
+              diffs.length === changePos.length &&
+              diffs.every(pos => changeSet.has(pos));
+
+            bankMap.set(key, {
+              diffs,
+              items: [],
+              rotCount,
+              minRot,
+              isBase
+            });
+          }
+          bankMap.get(key).items.push({ idx: jIdx, ckCuts });
+        });
+
+        // ---- Order banks: original design first, then by number/position of rotations ----
+        const banks = Array.from(bankMap.values());
+        banks.sort((a,b)=>{
+          if (a.isBase && !b.isBase) return -1;
+          if (b.isBase && !a.isBase) return 1;
+
+          if (a.rotCount !== b.rotCount) return a.rotCount - b.rotCount;
+
+          if (a.minRot !== b.minRot) return a.minRot - b.minRot;
+
+          // tie-break by diff positions lexicographically
+          const da = a.diffs;
+          const db = b.diffs;
+          const len = Math.min(da.length, db.length);
+          for (let k=0; k<len; k++){
+            if (da[k] !== db[k]) return da[k] - db[k];
+          }
+          return da.length - db.length;
+        });
+
+        // Flatten banks back into an ordered CK list,
+        // preserving original recursion order within each bank
+        const orderedCks = [];
+        banks.forEach(bank => {
+          bank.items.sort((x,y)=> x.idx - y.idx);
+          bank.items.forEach(it => orderedCks.push(it.ckCuts));
+        });
+
+        orderedCks.forEach((ckCuts, j)=>{
           ckTotal++;
           const ckLabel = `CK${i+1}.${(j+1)}`;
           const ckCode = ckCuts.join("");
@@ -1220,6 +1352,7 @@
 
         lines.push(""); // spacer between MK groups
       });
+
 
       return { lines, csvRows, mkCount, ckTotal, errorCount };
     }
@@ -1305,15 +1438,22 @@ function codingLinesToHTML(lines){
       return esc;
 
     } else {
-      // CK lines and any other lines
-      const esc = line
+      // CK lines and any other lines (including rotation marker line)
+      let esc = line
           .replace(/&/g,'&amp;')
           .replace(/</g,'&lt;')
           .replace(/>/g,'&gt;');
+
+      // Make rotation symbols smaller + aligned without changing spacing
+      if (line.indexOf('↻') !== -1) {
+        esc = esc.replace(/↻+/g, m => `<span class="rotSym">${m}</span>`);
+      }
+
       return hasErr ? `<span class="err">${esc}</span>` : esc;
     }
   }).join('\n');
 }
+
 
 // Keep Create screen behaviour
 function printLines(lines){
@@ -2398,24 +2538,29 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       keyMap[c].push(s);
     });
 
-    // build from the SAME base HTML that Coding Only uses
-    const htmlRaw = (typeof codingLinesToHTML === 'function')
-      ? codingLinesToHTML(lines)
-      : lines.join('\n');
+      let htmlRaw = (typeof codingLinesToHTML === 'function')
+        ? codingLinesToHTML(lines)
+        : lines.join('<br>');
+
+      if (!htmlRaw || typeof htmlRaw !== 'string') {
+        htmlRaw = String(htmlRaw || '');
+      }
 
       const html = htmlRaw
         .replace(/(?:MAC|DFC|MCV)(?:\s*&(?:amp;)?\s*(?:MAC|DFC|MCV))?\s*Error\b/gi, '')
         .replace(/\s*&\s*(?:MAC|DFC|MCV)\s*Error\b/gi, '')
-        .replace(/&amp;/g, '')
+        .replace(/&amp;/g, '&')
         .replace(/((?:GMK|MK\d+|CK\d+\.\d+)\s*-\s*\d+)/g, (m)=>{
           const codeMatch = m.match(/(\d{3,})$/);
           if (!codeMatch) return m;
           const code = codeMatch[1];
-          const stamps = keyMap[code] ? keyMap[code].join(', ') : '';
-          return stamps ? `${m} &nbsp; <span class="muted">(${stamps})</span>` : m;
+          const stamps = keyMap[code] ? `   (${keyMap[code].join(', ')})` : '';
+          return m + stamps;
         });
 
       host.innerHTML = `<div>${html}</div>`;
+
+
   }
 
 
@@ -2522,6 +2667,140 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     modal.hidden = true === false ? true : false; // force reflow-safe show
     modal.hidden = false;
   }
+  
+  function applyCkRotation(tmkStr, baseArrayStr, state){
+    const rawArray = String(baseArrayStr || '');
+    const chars    = rawArray.split('');
+
+    const ckAlloc = Math.max(0, (state && state.ckAlloc) || 0);
+    const mkAlloc = (state && state.mkAlloc) || 0;
+
+    // MK rotation will be done later – ignore MK allocation for now
+    if (mkAlloc > 0){
+      console.warn('MK rotation logic not implemented yet – mkAlloc will be ignored.');
+    }
+
+    // No CK rotation requested → just rebuild with current array
+    if (ckAlloc <= 0){
+      const tree = buildCodingTree(tmkStr, rawArray);
+      return {
+        array:   rawArray,
+        lines:   tree.lines || [],
+        csvRows: tree.csvRows || []
+      };
+    }
+
+    // We can only rotate relative to an existing C/c block
+    const changeOrRotIdx = chars
+      .map((c,i)=>(c==='C' || c==='c') ? i : -1)
+      .filter(i=>i>=0);
+
+    if (!changeOrRotIdx.length){
+      const tree = buildCodingTree(tmkStr, rawArray);
+      return {
+        array:   rawArray,
+        lines:   tree.lines || [],
+        csvRows: tree.csvRows || []
+      };
+    }
+
+    const rightmost = Math.max(...changeOrRotIdx);
+
+    // Candidate zeros to convert to rotated slots: zeros LEFT of the C/c block
+    const zeroIdx = chars
+      .map((c,i)=> c==='0' ? i : -1)
+      .filter(i=>i>=0 && i < rightmost);
+
+    if (!zeroIdx.length){
+      const tree = buildCodingTree(tmkStr, rawArray);
+      return {
+        array:   rawArray,
+        lines:   tree.lines || [],
+        csvRows: tree.csvRows || []
+      };
+    }
+
+    let remaining = Math.min(ckAlloc, zeroIdx.length);
+
+    // Work from right-most zero leftwards:
+    //   00000C → 0000cC
+    //   0000CC → 000cCC
+    //   000cCC → 00ccCC
+    for (let i = zeroIdx.length - 1; i >= 0 && remaining > 0; i--){
+      const pos = zeroIdx[i];
+      chars[pos] = 'c';
+      remaining--;
+    }
+
+    const newArray = chars.join('');
+    const tree     = buildCodingTree(tmkStr, newArray);
+
+    return {
+      array:   newArray,
+      lines:   tree.lines || [],
+      csvRows: tree.csvRows || []
+    };
+  }
+
+  
+  function applyCkExpansion(tmkStr, arrayStr, state){
+    const baseArray = String(arrayStr || '').toUpperCase();
+    const arr = baseArray.split('');
+
+    // Find all zero chambers that can be reused
+    const zeroIdx = [];
+    for (let i = 0; i < arr.length; i++){
+      if (arr[i] === '0') zeroIdx.push(i);
+    }
+
+    const ckAlloc = Math.max(
+      0,
+      Math.min((state && state.ckAlloc) || 0, zeroIdx.length)
+    );
+    const mkAlloc = (state && state.mkAlloc) || 0;
+
+    // MK rotation not implemented yet (explicit for now)
+    if (mkAlloc > 0){
+      alert('Master Key rotation logic is not implemented yet. MK allocation will be ignored for now.');
+    }
+
+    // Turn right-most zeros into extra C chambers (closest to existing change bank)
+    const ckRotIdx = [];
+    for (let n = 0; n < ckAlloc; n++){
+      const idx = zeroIdx[zeroIdx.length - 1 - n];
+      arr[idx]  = 'C';
+      ckRotIdx.push(idx);
+    }
+
+    const newArray = arr.join('');
+    const tree     = buildCodingTree(tmkStr, newArray);
+    const lines    = tree.lines ? tree.lines.slice() : [];
+
+    // Inject a marker line with ↻ under the rotated change chambers
+    const arrLineIdx = lines.findIndex(l => /^Array\s*:/.test(String(l)));
+    if (arrLineIdx >= 0 && ckRotIdx.length){
+      const arrLine   = String(lines[arrLineIdx]);
+      const suffix    = newArray;
+      const prefixLen = Math.max(0, arrLine.length - suffix.length);
+
+      const markerChars = suffix.split('').map(() => ' ');
+      ckRotIdx.forEach(idx => {
+        if (idx >= 0 && idx < markerChars.length){
+          markerChars[idx] = '↻';
+        }
+      });
+
+      const markerLine = ' '.repeat(prefixLen) + markerChars.join('');
+      lines.splice(arrLineIdx + 1, 0, markerLine);
+    }
+
+    return {
+      array:   newArray,
+      lines,
+      csvRows: tree.csvRows || []
+    };
+  }
+
 
   function showExpandPreview(){
     if (!_currentSystem || !window._expandState) return;
@@ -2533,9 +2812,13 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
     if (!previewModal || !body) return;
 
-    const tmk   = String(_currentSystem.tmk || '');
-    const array = String(_currentSystem.array || '').toUpperCase();
-    const lines = _currentSystem.lines ? _currentSystem.lines.slice() : [];
+    const tmk       = String(_currentSystem.tmk   || '');
+    const baseArray = String(_currentSystem.array || '');
+
+    // Build the expanded design (CK rotations only for now)
+    const expanded = applyCkRotation(tmk, baseArray, window._expandState || {});
+    const array    = String(expanded.array || '').toUpperCase();
+    const lines    = expanded.lines || [];
 
     let html = '';
     html += `<div class="muted" style="margin-bottom:8px;">TMK: ${tmk} &nbsp;&nbsp; Array: ${array}</div>`;
@@ -2544,9 +2827,6 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         ? codingLinesToHTML(lines)
         : lines.map(l => String(l)).join('<br>')
     }</div>`;
-    html += `<div class="muted" style="margin-top:8px;font-size:12px;">
-               Preview currently uses your existing coding tree. Rotated expansion logic will plug in here.
-             </div>`;
 
     body.innerHTML = html;
     previewModal.hidden = false;
@@ -2556,10 +2836,35 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     };
 
     if (btnAccept) btnAccept.onclick = () => {
-      // TODO: when rotated expansion is implemented, apply and persist the new design here
-      previewModal.hidden = true;
+      // Recompute in case state changed, then commit
+      const final = applyCkRotation(tmk, baseArray, window._expandState || {});
+
+      _currentSystem.array = final.array;   // this may contain 'c'
+      _currentSystem.lines = final.lines;   // includes ↻ marker line
+
+      // *** NEW: keep rows / CSV in sync so Fast Build uses the rotated design ***
+      if (Array.isArray(final.csvRows) && final.csvRows.length){
+        // first row is header, rest are CK rows (same shape as when saving from Create)
+        _currentSystem.csv  = final.csvRows.slice();
+        _currentSystem.rows = final.csvRows.slice(1);
+      }
+
+      if (typeof persistCurrentSystem === 'function'){
+        persistCurrentSystem();
+      }
+
+      previewModal.hidden   = true;
+      window._expandState   = null;
+
+      // Refresh Coding Tree tab
+      if (typeof renderCodingTreeUI === 'function'){
+        renderCodingTreeUI('coding');
+      }
     };
   }
+
+
+
 
 
   // ---- Coding Check view (Phantoms + Ghosts) ----
