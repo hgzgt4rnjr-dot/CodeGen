@@ -2894,8 +2894,10 @@ function showExpandPreview(){
             return m + stamps;
         });
 
-    body.innerHTML = htmlTree;
-    previewModal.hidden = false;
+      body.innerHTML = htmlTree;
+      body.scrollTop = 0;
+      previewModal.hidden = false;
+
 
     function closePreview(){
         previewModal.hidden = true;
