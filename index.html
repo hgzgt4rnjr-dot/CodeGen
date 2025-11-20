@@ -43,6 +43,7 @@
     .muted{color:var(--muted)}
     .out{white-space:pre-wrap;background:#060606;border:1px solid #101010;border-radius:12px;padding:12px;max-height:50vh;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;line-height:1.35}
     .rotSym{font-size:11px;line-height:1.35;position:relative;top:-3px;}
+    .rotSlot{color:#00C853;font-weight:700;}
     .ok{color:var(--fg)}
     .mk{color:var(--mk)}
     .err{color:var(--danger)}
@@ -1488,8 +1489,49 @@ const statsEl = $('#stats');
 
 // Reusable: turn coding lines into coloured HTML
 function codingLinesToHTML(lines){
-  return lines.map(line=>{
+  function escChar(ch){
+    if (ch === '&') return '&amp;';
+    if (ch === '<') return '&lt;';
+    if (ch === '>') return '&gt;';
+    return ch;
+  }
+
+  function escLine(str){
+    return str
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
+
+  const out = [];
+
+  for (let i = 0; i < lines.length; i++){
+    const line = lines[i];
     const hasErr = /(?:MAC|DFC|MCV)\s*Error/.test(line); // catches Errors
+
+    // Array line with rotation marker line underneath
+    if (line.startsWith('Array :')){
+      const next = lines[i + 1] || '';
+      if (next.indexOf('↻') !== -1 && next.length === line.length){
+        let html = '';
+        for (let j = 0; j < line.length; j++){
+          const ch = line[j];
+          const markCh = next[j] || ' ';
+          const esc = escChar(ch);
+          if (markCh === '↻' && /[A-Z0-9]/.test(ch)){
+            html += `<span class="rotSlot">${esc}</span>`;
+          } else {
+            html += esc;
+          }
+        }
+        out.push(html);
+        i += 1; // skip the marker line itself
+        continue;
+      } else {
+        out.push(escLine(line));
+        continue;
+      }
+    }
 
     if (line.startsWith('%cMK')) {
       // MK line with style markers
@@ -1501,44 +1543,33 @@ function codingLinesToHTML(lines){
 
       if (hasErr) {
         // Whole MK line red (label + code + error)
-        return `<span class="err">${safe}</span>`;
+        out.push(`<span class="err">${safe}</span>`);
       } else {
         // MK label cyan, rest normal
-        const [head, ...rest] = safe.split('  ');
-        const tail = rest.join('  ');
-        return `<span class="mk">${head}</span>${tail ? `  ${tail}` : ''}`;
+        const parts = safe.split('  ');
+        const head = parts[0] || '';
+        const tail = parts.slice(1).join('  ');
+        out.push(`<span class="mk">${head}</span>${tail ? `  ${tail}` : ''}`);
       }
 
     } else if (line.startsWith('GMK -')) {
-      const esc = line
-          .replace(/&/g,'&amp;')
-          .replace(/</g,'&lt;')
-          .replace(/>/g,'&gt;');
-      return `<span class="tmk">${esc}</span>`;
+      const esc = escLine(line);
+      out.push(`<span class="tmk">${esc}</span>`);
 
     } else if (line.startsWith('TMK   :')) {
-      const esc = line
-          .replace(/&/g,'&amp;')
-          .replace(/</g,'&lt;')
-          .replace(/>/g,'&gt;');
-      return esc;
+      const esc = escLine(line);
+      out.push(esc);
 
     } else {
-      // CK lines and any other lines (including rotation marker line)
-      let esc = line
-          .replace(/&/g,'&amp;')
-          .replace(/</g,'&lt;')
-          .replace(/>/g,'&gt;');
-
-      // Make rotation symbols smaller + aligned without changing spacing
-      if (line.indexOf('↻') !== -1) {
-        esc = esc.replace(/↻+/g, m => `<span class="rotSym">${m}</span>`);
-      }
-
-      return hasErr ? `<span class="err">${esc}</span>` : esc;
+      // CK lines and any other lines
+      const esc = escLine(line);
+      out.push(hasErr ? `<span class="err">${esc}</span>` : esc);
     }
-  }).join('\n');
+  }
+
+  return out.join('\n');
 }
+
 
 
 // Keep Create screen behaviour
@@ -2585,7 +2616,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     const btnExpandDesign = document.getElementById('btnExpandDesign');
     if (btnExpandDesign) btnExpandDesign.onclick = startExpandDesignFlow;
 
-    renderCodingTreeUI('coding');
+    renderCodingTreeUI('showKeys');
   }
 
 
@@ -2759,7 +2790,7 @@ function applyCkRotation(tmkStr, baseArrayStr, state){
     const chars    = rawArray.split('');
 
     const ckAlloc = Math.max(0, (state && state.ckAlloc) || 0);
-    const mkAlloc = Math.max(0, (state && state.mkAlloc) || 0);
+    let   mkAlloc = Math.max(0, (state && state.mkAlloc) || 0);
 
     // Nothing allocated → just rebuild with current array
     if (ckAlloc <= 0 && mkAlloc <= 0){
@@ -2772,8 +2803,7 @@ function applyCkRotation(tmkStr, baseArrayStr, state){
         };
     }
 
-    // ---------- If user is adding MKs but there is no M yet ----------
-    // Shift TMK to a valid GMK and insert the first true 'M'
+    // ---------- FIRST-TIME MK SETUP (no M/m yet, but mkAlloc > 0) ----------
     if (mkAlloc > 0){
         const hasMaster = chars.some(c => c === 'M' || c === 'm');
 
@@ -2781,10 +2811,10 @@ function applyCkRotation(tmkStr, baseArrayStr, state){
             const tmkArr = tmkStr.split('').map(d => +d);
 
             if (tmkArr.every(v => Number.isFinite(v))){
-                // Prefer putting M immediately before the right-most C/c
+                // Prefer putting M immediately before the right-most C/c, else last zero
                 const changeOrRotIdx = chars
                     .map((c,i)=> (c==='C' || c==='c') ? i : -1)
-                    .filter(i=>i>=0);
+                    .filter(i=> i>=0);
 
                 let mPos = -1;
 
@@ -2838,8 +2868,12 @@ function applyCkRotation(tmkStr, baseArrayStr, state){
 
                         if (picked !== null){
                             // Commit GMK + insert M
-                            tmkStr        = tmkArr.join('');
-                            chars[mPos]   = 'M';
+                            tmkStr      = tmkArr.join('');
+                            chars[mPos] = 'M';
+
+                            // We have now created MK1 from this expansion.
+                            // Consume 1 from mkAlloc so rotations only represent extra MK tiers.
+                            mkAlloc = Math.max(0, mkAlloc - 1);
                         } else {
                             // Revert if no valid GMK depth found
                             tmkArr[mPos] = origDepth;
@@ -2850,25 +2884,28 @@ function applyCkRotation(tmkStr, baseArrayStr, state){
         }
     }
 
-    // ---------- CK rotation (C → c), respecting existing rotated CKs ----------
+    // ---------- CK rotation (C → c) ---------- 
+    // Each run treats ckAlloc as "new rotated CK chambers to add now".
     if (ckAlloc > 0){
-        const existingC = chars.filter(c => c === 'c').length;
-        let remainingC  = Math.max(0, ckAlloc - existingC);
+        const changeOrRotIdx = chars
+            .map((c,i)=> (c==='C' || c==='c') ? i : -1)
+            .filter(i=> i>=0);
 
-        if (remainingC > 0){
-            const changeOrRotIdx = chars
-                .map((c,i)=>(c==='C' || c==='c') ? i : -1)
-                .filter(i=>i>=0);
+        if (changeOrRotIdx.length){
+            const rightmostC = Math.max(...changeOrRotIdx);
 
-            if (changeOrRotIdx.length){
-                const rightmostC = Math.max(...changeOrRotIdx);
+            // Candidate zeros to convert to rotated CK slots: zeros LEFT of the C/c block
+            const zeroIdxForC = chars
+                .map((c,i)=> c==='0' ? i : -1)
+                .filter(i=> i>=0 && i < rightmostC);
 
-                // Candidate zeros to convert to rotated CK slots: zeros LEFT of the C/c block
-                const zeroIdxForC = chars
-                    .map((c,i)=> c==='0' ? i : -1)
-                    .filter(i=>i>=0 && i < rightmostC);
+            if (zeroIdxForC.length){
+                let remainingC = Math.min(ckAlloc, zeroIdxForC.length);
 
-                // Work from right-most zero leftwards, but only for the *extra* rotations
+                // Work from right-most zero leftwards:
+                //   00000C → 0000cC
+                //   0000CC → 000cCC
+                //   000cCC → 00ccCC
                 for (let i = zeroIdxForC.length - 1; i >= 0 && remainingC > 0; i--){
                     const pos = zeroIdxForC[i];
                     chars[pos] = 'c';
@@ -2878,27 +2915,26 @@ function applyCkRotation(tmkStr, baseArrayStr, state){
         }
     }
 
-
-    // ---------- MK rotation (M → m), mirroring CK rules and respecting existing 'm' ----------
+    // ---------- MK rotation (M → m), mirroring CK rules ---------- 
+    // Each run treats mkAlloc as "new rotated MK chambers to add now".
     if (mkAlloc > 0){
-        const existingM = chars.filter(c => c === 'm').length;
-        let remainingM  = Math.max(0, mkAlloc - existingM);
+        // Treat both M and m as the master block for anchoring rotations
+        const masterOrRotIdx = chars
+            .map((c,i)=> (c==='M' || c==='m') ? i : -1)
+            .filter(i=> i>=0);
 
-        if (remainingM > 0){
-            // Treat both M and m as the master block for anchoring rotations
-            const masterOrRotIdx = chars
-                .map((c,i)=> (c==='M' || c==='m') ? i : -1)
-                .filter(i=>i>=0);
+        if (masterOrRotIdx.length){
+            const rightmostM = Math.max(...masterOrRotIdx);
 
-            if (masterOrRotIdx.length){
-                const rightmostM = Math.max(...masterOrRotIdx);
+            // Candidate zeros to convert to rotated MK slots: zeros LEFT of the M/m block
+            const zeroIdxForM = chars
+                .map((c,i)=> c==='0' ? i : -1)
+                .filter(i=> i>=0 && i < rightmostM);
 
-                // Candidate zeros to convert to rotated MK slots: zeros LEFT of the M/m block
-                const zeroIdxForM = chars
-                    .map((c,i)=> c==='0' ? i : -1)
-                    .filter(i=>i>=0 && i < rightmostM);
+            if (zeroIdxForM.length){
+                let remainingM = Math.min(mkAlloc, zeroIdxForM.length);
 
-                // Work from right-most zero leftwards, but only for the *extra* rotations
+                // Same pattern: work from right-most zero leftwards, but mark as 'm'
                 //   00000M  → 0000mM
                 //   0000MM  → 000mMM
                 //   000mMM  → 00mmMM
@@ -3007,7 +3043,7 @@ function showExpandPreview(){
 
         // Refresh Coding Tree tab (user can flip between Coding / Show Keys normally)
         if (typeof renderCodingTreeUI === 'function'){
-            renderCodingTreeUI('coding');
+            renderCodingTreeUI('showKeys');
         }
     };
 }
