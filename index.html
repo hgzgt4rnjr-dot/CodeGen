@@ -2886,26 +2886,43 @@ function applyCkRotation(tmkStr, baseArrayStr, state){
 
     // ---------- CK rotation (C → c) ---------- 
     // Each run treats ckAlloc as "new rotated CK chambers to add now".
-    // Always rotate into the furthest-right available "0" in the array.
     if (ckAlloc > 0){
         const changeOrRotIdx = chars
             .map((c,i)=> (c==='C' || c==='c') ? i : -1)
             .filter(i=> i>=0);
 
-        if (changeOrRotIdx.length){
-            const rightmostC = Math.max(...changeOrRotIdx);
-
-            // Candidate zeros to convert to rotated CK slots: ANY "0" in the array
-            const zeroIdxForC = chars
+        // If there has never been any C/c at all (e.g. Array : 00000),
+        // treat this as a first build: promote zeros to base 'C' from the right.
+        if (!changeOrRotIdx.length){
+            const zeroIdxForFirstC = chars
                 .map((c,i)=> c==='0' ? i : -1)
                 .filter(i=> i>=0);
+
+            if (zeroIdxForFirstC.length){
+                let remainingC = Math.min(ckAlloc, zeroIdxForFirstC.length);
+
+                // First-time progression:
+                //   00000  + 1C → 0000C
+                //   00000  + 2C → 000CC
+                for (let i = zeroIdxForFirstC.length - 1; i >= 0 && remainingC > 0; i--){
+                    const pos = zeroIdxForFirstC[i];
+                    chars[pos] = 'C';
+                    remainingC--;
+                }
+            }
+        } else {
+            const rightmostC = Math.max(...changeOrRotIdx);
+
+            // Candidate zeros to convert to rotated CK slots: zeros LEFT of the C/c block
+            const zeroIdxForC = chars
+                .map((c,i)=> c==='0' ? i : -1)
+                .filter(i=> i>=0 && i < rightmostC);
 
             if (zeroIdxForC.length){
                 let remainingC = Math.min(ckAlloc, zeroIdxForC.length);
 
-                // Work from right-most zero leftwards:
+                // Normal rotation once a C-block exists:
                 //   00000C → 0000cC
-                //   MC0000 → MC000c
                 //   0000CC → 000cCC
                 //   000cCC → 00ccCC
                 for (let i = zeroIdxForC.length - 1; i >= 0 && remainingC > 0; i--){
@@ -2916,6 +2933,7 @@ function applyCkRotation(tmkStr, baseArrayStr, state){
             }
         }
     }
+
 
 
     // ---------- MK rotation (M → m), mirroring CK rules ---------- 
