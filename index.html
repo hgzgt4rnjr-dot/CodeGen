@@ -38,7 +38,17 @@
 
 
     *{box-sizing:border-box}
-    html,body{height:100%;margin:0;padding-bottom:env(safe-area-inset-bottom);background:var(--bg) var(--bgimg) center center/cover no-repeat fixed;color:var(--fg);font-family:-apple-system,system-ui,Helvetica,Arial}
+    html,body{
+      height:100%;
+      margin:0;
+      padding-bottom:env(safe-area-inset-bottom);
+      color:var(--fg);
+      font-family:-apple-system,system-ui,Helvetica,Arial;
+    }
+
+    body{
+      background:var(--bg) var(--bgimg) center center/cover no-repeat fixed;
+    }
 
 
     .wrap{max-width:900px;margin:0 auto;padding:20px}
