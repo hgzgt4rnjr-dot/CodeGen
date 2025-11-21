@@ -33,6 +33,7 @@
       --card-bg:#0e0e0e;
       --card-border:#151515;
       --card-shadow:0 8px 30px rgba(0,0,0,0.35);
+      --field-bg:#0a0a0a;
     }
 
 
@@ -55,7 +56,7 @@
     h1{font-size:24px;margin:6px 0 12px;color:var(--accent)}
     .card{background:var(--bg);border:1px solid #151515;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 8px 30px rgba(0,0,0,0.35)}
     label{display:block;font-size:13px;color:#bdbdbd;margin:10px 0 6px}
-    input[type=text]{width:100%;background:#0a0a0a;border:1px solid #1e1e1e;color:var(--fg);border-radius:12px;padding:12px 14px;font-size:16px;outline:none}
+    input[type=text]{width:100%;background:var(--field-bg);border:1px solid #1e1e1e;color:var(--fg);border-radius:12px;padding:12px 14px;font-size:16px;outline:none}
     input[type=text]::placeholder{color:#666}
     .row{display:flex;gap:10px;flex-wrap:wrap}
     .row > *{flex:1 1 160px}
@@ -106,7 +107,7 @@
     .modal .row > div{flex:1 1 160px}
     .modal .btnbar{display:flex; gap:10px; justify-content:flex-end; margin-top:14px}
     .modal input[type=number]{
-      width:100%; background:#0a0a0a; border:1px solid #1e1e1e; color:var(--fg);
+      width:100%; background:var(--field-bg); border:1px solid #1e1e1e; color:var(--fg);
       border-radius:12px; padding:10px 12px; font-size:16px; outline:none
     }
         /* Segmented buttons for pin size */
@@ -239,7 +240,7 @@
       padding:6px 10px;
       border:1px solid #1e1e1e;
       border-radius:10px;
-      background:#0a0a0a;
+      background:var(--field-bg);
       color:var(--fg);
       cursor:pointer;
     }
@@ -333,6 +334,7 @@
       --card-bg:#ffffff;
       --card-border:#dddddd;
       --card-shadow:0 4px 18px rgba(0,0,0,0.12);
+      --field-bg:#ffffff;
     }
 
 
@@ -629,7 +631,7 @@
     <div class="backdrop" id="reduceResultBackdrop"></div>
     <div class="dialog">
       <h3>Processing Complete</h3>
-      <pre id="reduceSummary" style="background:#060606;border:1px solid #101010;border-radius:12px;padding:10px;white-space:pre-wrap;margin:8px 0 12px 0;"></pre>
+      <pre id="reduceSummary" style="background:var(--field-bg);border:1px solid #101010;border-radius:12px;padding:10px;white-space:pre-wrap;margin:8px 0 12px 0;"></pre>
       <div class="btnbar" style="justify-content:flex-end">
         <button id="reduceResultCancel">Cancel</button>
         <button class="primary" id="reduceAccept">Accept</button>
@@ -1231,7 +1233,7 @@
       applyTheme(theme);
 
       // tiny micro-refresh to fix bottom not painting properly on first load
-      setTimeout(()=>applyTheme(theme), 40);
+      setTimeout(()=>applyTheme(theme), 60);
     }
 
     // ---------- Admin Settings modal ----------
@@ -2885,7 +2887,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         <button id="ctCodingOnly" class="subtabbtn active">Coding Only</button>
         <button id="ctShowKeys" class="subtabbtn">Show Keys</button>
         <input id="ctManualCode" type="text" inputmode="numeric" pattern="[0-9]*"
-               style="width:120px;background:#0a0a0a;border:1px solid var(--border);border-radius:12px;padding:8px 10px;font-size:14px;color:var(--fg);" />
+               style="width:120px;background:var(--field-bg);border:1px solid var(--border);border-radius:12px;padding:8px 10px;font-size:14px;color:var(--fg);" />
       </div>
       <div id="codingTreeHost" class="out" style="max-height:60vh; overflow:auto;"></div>
       <div class="btnbar" style="margin-top:10px;justify-content:flex-end;">
@@ -5376,7 +5378,7 @@ function showExpandPreview(){
                 else if (it.type === 'MK')   line = `<span class="mk">${line}</span>`;
                 // CK stays default (white)
             }
-            html += `<button type="button" data-code="${it.code}" style="text-align:left;padding:8px 10px;border:1px solid #1e1e1e;border-radius:10px;background:#0a0a0a;cursor:pointer;">${line}</button>`;
+            html += `<button type="button" data-code="${it.code}" style="text-align:left;padding:8px 10px;border:1px solid #1e1e1e;border-radius:10px;background:var(--field-bg);cursor:pointer;">${line}</button>`;
 
           });
         }
@@ -5390,7 +5392,7 @@ function showExpandPreview(){
           b.onclick = ()=>{
             buttons.forEach(x=>{
               x.style.borderColor = '#1e1e1e';
-              x.style.background  = '#0a0a0a';
+              x.style.background  = 'var(--field-bg)';
             });
             b.style.borderColor = 'var(--accent)';
             b.style.background  = '#0b0b0b';
