@@ -38,6 +38,9 @@
     .btnbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
     button{border:1px solid #1f1f1f;background:#111;color:var(--fg);padding:10px 14px;border-radius:12px;font-size:15px}
     button.primary{background:var(--accent);color:#002a16;border-color:#00c070;font-weight:600}
+    #adminSettingsBtn{
+      border-radius:999px;
+    }
     button.warn{background:#1b0006;color:#ffd9e0;border-color:#3a0a16}
     button:active{transform:translateY(1px)}
     .muted{color:var(--muted)}
@@ -293,6 +296,105 @@
       cursor:default;
     }
 
+    /* --- Commercial theme overrides (light / blue) --- */
+    body.theme-commercial{
+      --bg:#ffffff;
+      --fg:#000000;
+      --accent:#247CFF;      /* blue accent */
+      --muted:#555555;
+      --mk:#000000;
+      --tmk:#000000;
+    }
+
+    body.theme-commercial{
+      background:#ffffff url("backgroundC.png") center center/cover no-repeat fixed;
+      color:var(--fg);
+    }
+
+    body.theme-commercial .wrap{
+      background:#ffffff;
+    }
+
+    body.theme-commercial .card,
+    body.theme-commercial .out{
+      background:#ffffff;
+      border-color:#dddddd;
+      box-shadow:0 4px 18px rgba(0,0,0,0.12);
+    }
+
+    body.theme-commercial .modal .dialog{
+      background:#ffffff;
+      border-color:#dddddd;
+      box-shadow:0 4px 18px rgba(0,0,0,0.16);
+    }
+
+    body.theme-commercial input[type=text],
+    body.theme-commercial input[type=number]{
+      background:#ffffff;
+      border-color:#cccccc;
+      color:var(--fg);
+    }
+
+    body.theme-commercial input[type=text]::placeholder,
+    body.theme-commercial input[type=number]::placeholder{
+      color:#aaaaaa;
+    }
+
+    body.theme-commercial button{
+      background:#ffffff;
+      border-color:#c0c0c0;
+      color:var(--fg);
+    }
+
+    body.theme-commercial button.primary{
+      background:var(--accent);
+      border-color:#185ad1;
+      color:#ffffff;
+    }
+
+    body.theme-commercial #adminSettingsBtn{
+      border-color:#c0c0c0;
+      background:#ffffff;
+      color:var(--fg);
+    }
+
+    body.theme-commercial .keyrow,
+    body.theme-commercial .doorrow{
+      background:#ffffff;
+      border-color:#d0d0d0;
+    }
+
+    body.theme-commercial .keyrow.selected,
+    body.theme-commercial .doorrow.selected{
+      background:#e8f0ff;
+      border-color:var(--accent);
+    }
+
+    body.theme-commercial .kgTable tr:first-child th,
+    body.theme-commercial .kgTable th:first-child,
+    body.theme-commercial .kgTable td:first-child{
+      background:#ffffff;
+    }
+
+    body.theme-commercial .kgCB.viewmode{
+      accent-color:#247CFF;
+    }
+
+    body.theme-commercial .pinHdr,
+    body.theme-commercial .pinCell{
+      background:#ffffff;
+      border-color:#dddddd;
+    }
+
+    body.theme-commercial .rotSlot{
+      color:var(--accent);
+    }
+
+    /* GMK / MK / CK lines all black in Commercial theme */
+    body.theme-commercial .tmk,
+    body.theme-commercial .mk{
+      color:#000000;
+    }
 
 
 
@@ -306,7 +408,7 @@
      style="display:flex;flex-direction:column;justify-content:center;align-items:center;
             height:100vh;text-align:center;background:transparent;">
 
-    <h1 style="font-size:38px;margin-bottom:40px;color:#00ff90;font-weight:700;">
+    <h1 style="font-size:38px;margin-bottom:40px;color:var(--accent);font-weight:700;">
       Welcome to CodeGen V5.5.1
     </h1>
 
@@ -317,22 +419,26 @@
         Create System
       </button>
       <button id="goLoad"
-              style="background:#111;border:1px solid #333;color:#e0e0e0;
-                     padding:14px 20px;font-size:17px;border-radius:14px;">
+              style="padding:14px 20px;font-size:17px;border-radius:14px;">
         Load System
       </button>
       <button id="goManager"
-              style="background:#111;border:1px solid #333;color:#e0e0e0;
-                     padding:14px 20px;font-size:17px;border-radius:14px;">
+              style="padding:14px 20px;font-size:17px;border-radius:14px;">
         System Manager
       </button>
     </div>
 
+    <button id="adminSettingsBtn"
+            style="position:absolute;left:20px;bottom:20px;font-size:22px;border-radius:999px;
+                   width:44px;height:44px;display:flex;align-items:center;justify-content:center;">
+      ⚙️
+    </button>
 
-    <footer style="position:absolute;bottom:20px;color:#666;font-size:13px;">
+    <footer style="position:absolute;bottom:20px;color:var(--muted);font-size:13px;">
       © 2025 CodeGen Systems
     </footer>
   </div>
+
 
   <!-- Load Screen -->
   <div id="loadScreen" class="wrap" style="display:none;min-height:100vh;flex-direction:column;">
@@ -1010,6 +1116,32 @@
       </div>
     </div>
   </div>
+  
+  <!-- Admin Settings Modal -->
+  <div id="adminSettingsModal" class="modal" hidden>
+    <div class="backdrop" id="adminSettingsBackdrop"></div>
+    <div class="dialog">
+      <h3>Admin Settings</h3>
+      <div class="muted" style="margin:6px 0 10px 0;">
+        Theme
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:12px;">
+        <label class="inline" style="font-size:14px;">
+          <input type="radio" name="themeChoice" id="themeOriginal" value="original" style="margin-right:6px;">
+          Original
+        </label>
+        <label class="inline" style="font-size:14px;">
+          <input type="radio" name="themeChoice" id="themeCommercial" value="commercial" style="margin-right:6px;">
+          Commercial
+        </label>
+      </div>
+      <div class="btnbar" style="justify-content:flex-end;">
+        <button id="themeCancel">Cancel</button>
+        <button class="primary" id="themeSave">Save</button>
+      </div>
+    </div>
+  </div>
+
 
 
 
@@ -1023,6 +1155,95 @@
     // ---------- Utility ----------
     const $ = s => document.querySelector(s);
     const randInt = (a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+
+    // ---------- Theme handling ----------
+    const THEME_KEY = 'codegen_theme';
+
+    function applyTheme(theme){
+      const body = document.body;
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+
+      if (theme === 'commercial'){
+        body.classList.add('theme-commercial');
+        theme = 'commercial';
+        if (metaTheme){
+          metaTheme.setAttribute('content', '#247CFF');
+        }
+      } else {
+        body.classList.remove('theme-commercial');
+        theme = 'original';
+        if (metaTheme){
+          metaTheme.setAttribute('content', '#00ff90');
+        }
+      }
+
+      const originalRadio = document.getElementById('themeOriginal');
+      const commercialRadio = document.getElementById('themeCommercial');
+      if (originalRadio && commercialRadio){
+        originalRadio.checked = (theme === 'original');
+        commercialRadio.checked = (theme === 'commercial');
+      }
+
+      try{
+        localStorage.setItem(THEME_KEY, theme);
+      }catch(e){
+        // ignore storage issues
+      }
+    }
+
+    function initTheme(){
+      let theme = 'original';
+      try{
+        const stored = localStorage.getItem(THEME_KEY);
+        if (stored === 'commercial' || stored === 'original'){
+          theme = stored;
+        }
+      }catch(e){
+        theme = 'original';
+      }
+      applyTheme(theme);
+    }
+    // ---------- Admin Settings modal ----------
+    const adminBtn = document.getElementById('adminSettingsBtn');
+    const adminModal = document.getElementById('adminSettingsModal');
+    const adminBackdrop = document.getElementById('adminSettingsBackdrop');
+    const themeSaveBtn = document.getElementById('themeSave');
+    const themeCancelBtn = document.getElementById('themeCancel');
+    const themeOriginalRadio = document.getElementById('themeOriginal');
+    const themeCommercialRadio = document.getElementById('themeCommercial');
+
+    function openAdminSettings(){
+      if (adminModal){
+        adminModal.hidden = false;
+      }
+    }
+
+    function closeAdminSettings(){
+      if (adminModal){
+        adminModal.hidden = true;
+      }
+    }
+
+    if (adminBtn){
+      adminBtn.onclick = openAdminSettings;
+    }
+    if (adminBackdrop){
+      adminBackdrop.onclick = closeAdminSettings;
+    }
+    if (themeCancelBtn){
+      themeCancelBtn.onclick = closeAdminSettings;
+    }
+    if (themeSaveBtn){
+      themeSaveBtn.onclick = ()=>{
+        const chosen = (themeCommercialRadio && themeCommercialRadio.checked) ? 'commercial' : 'original';
+        applyTheme(chosen);
+        closeAdminSettings();
+      };
+    }
+
+    // Initialise theme once controls exist
+    initTheme();
+
 
     function showMessage(msg){
       const modal = document.getElementById('msgModal');
