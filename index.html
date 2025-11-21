@@ -1182,27 +1182,8 @@
     const $ = s => document.querySelector(s);
     const randInt = (a,b)=>Math.floor(Math.random()*(b-a+1))+a;
 
-    // --- Zoom control (used only for Add Door modal) ---
-    const viewportMeta = document.querySelector('meta[name="viewport"]');
-    const viewportDefaultContent = viewportMeta
-      ? viewportMeta.getAttribute('content')
-      : 'width=device-width,initial-scale=1,viewport-fit=cover';
-
-    function disableZoom(){
-      if (!viewportMeta) return;
-      viewportMeta.setAttribute(
-        'content',
-        'width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover'
-      );
-    }
-
-    function enableZoom(){
-      if (!viewportMeta) return;
-      viewportMeta.setAttribute('content', viewportDefaultContent);
-    }
-
     // ---------- Theme handling ----------
-
+    // ---------- Theme handling ----------
     const THEME_KEY = 'codegen_theme';
 
     function applyTheme(theme){
@@ -1252,7 +1233,7 @@
       applyTheme(theme);
 
       // tiny micro-refresh to fix bottom not painting properly on first load
-      setTimeout(()=>applyTheme(theme), 60);
+      setTimeout(()=>applyTheme(theme), 160);
     }
 
     // ---------- Admin Settings modal ----------
@@ -4353,10 +4334,7 @@ function showExpandPreview(){
       document.getElementById('doorNotes').value    = model.notes || '';
       m.hidden = false;
     }
-    function closeDoorModal(){
-      document.getElementById('doorModal').hidden = true;
-      enableZoom();
-    }
+    function closeDoorModal(){ document.getElementById('doorModal').hidden = true; }
 
     // --- Door Search Modal helpers ---
     function openDoorSearchModal(){
@@ -4495,7 +4473,10 @@ function showExpandPreview(){
       closeDoorModal();
     };
 
-    document.getElementById('doorAddAnother').onclick = ()=>{
+    const doorAddAnotherBtn = document.getElementById('doorAddAnother');
+    let doorAddAnotherLastTouch = 0;
+
+    function handleDoorAddAnother(){
       const savedIdx = saveDoorFromModal();
       if (savedIdx == null) return;
 
@@ -4512,7 +4493,29 @@ function showExpandPreview(){
       document.getElementById('doorPart').value     = basePart;
       document.getElementById('doorNotes').value    = '';
       _editingDoorIndex = null;
-    };
+    }
+
+    // Normal click (desktop / mouse)
+    doorAddAnotherBtn.addEventListener('click', ()=>{
+      handleDoorAddAnother();
+    });
+
+    // iOS Safari: kill double-tap zoom on this button only
+    doorAddAnotherBtn.addEventListener('touchend', (e)=>{
+      // We MUST preventDefault here to stop the zoom
+      e.preventDefault();
+
+      const now = Date.now();
+      // Avoid double-firing from synthetic click
+      if (now - doorAddAnotherLastTouch < 250) {
+        doorAddAnotherLastTouch = now;
+        return;
+      }
+      doorAddAnotherLastTouch = now;
+
+      handleDoorAddAnother();
+    }, { passive:false });
+
 
 
 
@@ -5063,7 +5066,6 @@ function showExpandPreview(){
           const nextStamp = getNextStamping(baseStamp);
           const nextDesc  = getNextDescription(baseDesc);
 
-          disableZoom();
           openDoorModal({
             stamping: nextStamp,
             description: nextDesc,
@@ -5072,7 +5074,6 @@ function showExpandPreview(){
             keys: []
           });
         };
-
 
        document.getElementById('doorEdit').onclick = ()=>{
          if (selectedIdx < 0) return;
