@@ -20,16 +20,30 @@
   <style>
     :root{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
     :root{
-      --bg:#000; --fg:#e8ffe8; --accent:#00ff90; --muted:#8a8a8a; --danger:#ff4d6d; --mk:#00c8ff; --tmk:#ff00ff;
+      --bg:#0a0a0a;
+      --fg:#e8ffe8;
+      --accent:#00ff90;
+      --muted:#8a8a8a;
+      --danger:#ff4d6d;
+      --mk:#00c8ff;
+      --tmk:#ff00ff;
+      --bgimg:url("background.png");
+      --list-row-bg:#0e0e0e;
+      --list-row-bg-selected:#0b0b0b;
+      --card-bg:#0e0e0e;
+      --card-border:#151515;
+      --card-shadow:0 8px 30px rgba(0,0,0,0.35);
     }
 
+
+
     *{box-sizing:border-box}
-    html,body{height:100%;margin:0;padding-bottom:env(safe-area-inset-bottom);background:#000 url("background.png") center center/cover no-repeat fixed;color:var(--fg);font-family:-apple-system,system-ui,Helvetica,Arial}
+    html,body{height:100%;margin:0;padding-bottom:env(safe-area-inset-bottom);background:var(--bg) var(--bgimg) center center/cover no-repeat fixed;color:var(--fg);font-family:-apple-system,system-ui,Helvetica,Arial}
 
 
     .wrap{max-width:900px;margin:0 auto;padding:20px}
     h1{font-size:24px;margin:6px 0 12px;color:var(--accent)}
-    .card{background:#0e0e0e;border:1px solid #151515;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 8px 30px rgba(0,0,0,0.35)}
+    .card{background:var(--bg);border:1px solid #151515;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 8px 30px rgba(0,0,0,0.35)}
     label{display:block;font-size:13px;color:#bdbdbd;margin:10px 0 6px}
     input[type=text]{width:100%;background:#0a0a0a;border:1px solid #1e1e1e;color:var(--fg);border-radius:12px;padding:12px 14px;font-size:16px;outline:none}
     input[type=text]::placeholder{color:#666}
@@ -74,7 +88,7 @@
       position:absolute; inset:0; background:rgba(0,0,0,0.55); backdrop-filter: blur(2px);
     }
     .modal .dialog{
-      position:relative; background:#0e0e0e; border:1px solid #202020; border-radius:16px;
+      position:relative; background:var(--bg); border:1px solid #202020; border-radius:16px;
       width:min(92vw,560px); padding:16px; box-shadow:0 10px 40px rgba(0,0,0,.6)
     }
     .modal h3{margin:0 0 8px 0; color:var(--accent); font-size:18px}
@@ -89,7 +103,7 @@
     .seg button.selected{
       color: var(--accent);
       border-color: var(--accent);
-      background:#0b0b0b;
+      background:var(--list-row-bg-selected);
       font-weight: 600;
     }
 
@@ -103,7 +117,7 @@
       position:sticky;
       top:0;
       z-index:2;
-      background:#0e0e0e;
+      background:var(--bg);
     }
     .keygrid .hdr { font-weight:600; }
 
@@ -135,7 +149,7 @@
       padding:12px 14px;
       border:1px solid #1e1e1e;
       border-radius:12px;
-      background:#0e0e0e;
+      background:var(--bg);
     }
     .keycell {
       /* no individual boxes — just text inside the row box */
@@ -152,7 +166,7 @@
     }
     .keyrow.selected {
       border-color: var(--accent);
-      background:#0b0b0b;
+      background:var(--list-row-bg-selected);
     }
     
         /* Doors grid (same look; 3 columns) */
@@ -164,7 +178,7 @@
       position:sticky;
       top:0;
       z-index:2;
-      background:#0e0e0e;
+      background:var(--bg);
     }
     .doorgrid .hdr { font-weight:600; }
 
@@ -189,16 +203,16 @@
       padding:12px 14px;
       border:1px solid #1e1e1e;
       border-radius:12px;
-      background:#0e0e0e;
+      background:var(--bg);
     }
     .doorcell { padding:0; border:0; background:transparent; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .doorrow.selected { border-color: var(--accent); background:#0b0b0b; }
+    .doorrow.selected { border-color: var(--accent); background:var(--list-row-bg-selected); }
     
     /* Active tab highlight */
     .tabbtn.active {
       color: var(--accent);
       border-color: var(--accent);
-      background:#0b0b0b;
+      background:var(--list-row-bg-selected);
     }
     /* Highlight for search buttons when filtered (same as menu tabs) */
     .search-active {
@@ -222,7 +236,7 @@
     .subtabbtn.active {
       color: var(--accent);
       border-color: var(--accent);
-      background:#0b0b0b;
+      background:var(--list-row-bg-selected);
     }
 
     
@@ -237,7 +251,7 @@
       padding:8px 10px;
       border:1px solid #1e1e1e;
       border-radius:10px;
-      background:#0e0e0e;
+      background:var(--bg);
       white-space:nowrap;
     }
     .pinHdr { font-weight:600; }
@@ -252,7 +266,7 @@
       position:sticky;
       top:0;
       z-index:3;
-      background:#0e0e0e;
+      background:var(--bg);
     }
     .kgTable tr:first-child th:first-child {
       z-index:4;                 /* keep top-left cell above others */
@@ -282,7 +296,7 @@
       position:sticky;
       left:0;
       z-index:2;
-      background:#0e0e0e;  /* same as card bg so it blends */
+      background:var(--bg);  /* same as card bg so it blends */
     }
     .kgTable th:first-child {
       z-index:3;           /* keep header above cells when scrolling */
@@ -296,20 +310,22 @@
       cursor:default;
     }
 
-    /* --- Commercial theme overrides (light / blue) --- */
     body.theme-commercial{
       --bg:#ffffff;
       --fg:#000000;
-      --accent:#247CFF;      /* blue accent */
+      --accent:#55E2E9;      /* blue accent */
       --muted:#555555;
       --mk:#000000;
       --tmk:#000000;
+      --bgimg:url("backgroundC.png");
+      --list-row-bg:#ffffff;
+      --list-row-bg-selected:#e8f0ff;
+      --card-bg:#ffffff;
+      --card-border:#dddddd;
+      --card-shadow:0 4px 18px rgba(0,0,0,0.12);
     }
 
-    body.theme-commercial{
-      background:#ffffff url("backgroundC.png") center center/cover no-repeat fixed;
-      color:var(--fg);
-    }
+
 
     body.theme-commercial .wrap{
       background:#ffffff;
@@ -450,7 +466,7 @@
       <!-- rows rendered by JS -->
     </div>
 
-      <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:6px;">
+      <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:var(--bg);padding:12px;border-radius:12px;margin-top:6px;">
         <button id="loadSearchOpen">🔍</button>
         <button id="returnMainFromLoad">Return to Main</button>
         <button id="openSystem" class="primary" disabled>Open System</button>
@@ -469,7 +485,7 @@
       <!-- rows rendered by JS -->
     </div>
 
-    <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:#0e0e0e;padding:12px;border-radius:12px;margin-top:6px;">
+    <div class="btnbar" style="justify-content:flex-end;position:sticky;bottom:0;background:var(--bg);padding:12px;border-radius:12px;margin-top:6px;">
       <button id="btnImport">Import Systems</button>
       <button id="btnBackup">Backup Systems</button>
       <button id="btnDelete" class="warn">Delete System</button>
@@ -2722,7 +2738,6 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         };
       }
 
-      
       function setActiveTab(name){
         const map = {
           keys   : btnKeys,
@@ -2732,29 +2747,40 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           keying : btnKeying,
           coding : btnCodingCheck
         };
+
         [btnKeys, btnDoors, btnTree, btnNotes, btnKeying, btnCodingCheck]
           .forEach(b=>b && b.classList.remove('active'));
         if (map[name]) map[name].classList.add('active');
 
         const content = document.getElementById('systemContent');
-        if (content){
-          if (name === 'keys' || name === 'doors'){
-            // Strip chrome so the inner cards (Keys/Doors) look like separate boxes
-            content.style.background = 'transparent';
-            content.style.border = '0';
-            content.style.boxShadow = 'none';
-            content.style.padding = '0';
-            content.style.minHeight = '0';
-          } else {
-            // Restore normal card look for all other tabs
-            content.style.background = '#0e0e0e';
-            content.style.border = '1px solid #151515';
-            content.style.boxShadow = '0 8px 30px rgba(0,0,0,0.35)';
-            content.style.padding = '16px';
-            content.style.minHeight = '120px';
-          }
+        if (!content) return;
+
+        if (name === 'keys' || name === 'doors'){
+          // Keys / Doors: let the inner grids be the “cards” and strip the outer chrome
+          content.style.background = 'transparent';
+          content.style.border = '0';
+          content.style.boxShadow = 'none';
+          content.style.padding = '0';
+          content.style.minHeight = '0';
+          return;
+        }
+
+        // For Notes / Coding Tree / Keying / Coding Check:
+        // clear any inline overrides so the CSS + theme vars take over
+        content.style.background = '';
+        content.style.border = '';
+        content.style.boxShadow = '';
+        content.style.padding = '';
+        content.style.minHeight = '';
+
+        // Make sure it still behaves like a card in both themes
+        if (!content.classList.contains('card')){
+          content.classList.add('card');
         }
       }
+
+    
+
 
 
 
@@ -2789,7 +2815,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         <div style="display:flex;flex-direction:column;gap:10px;">
           <label class="muted" style="font-size:16px; font-weight:600;">System Notes</label>
           <textarea id="systemNotesTA"
-            style="width:100%; min-height:40vh; resize:vertical; padding:12px; border:1px solid #1e1e1e; border-radius:12px; background:#0e0e0e; color:var(--fg); font-size:16px; line-height:1.5;"
+            style="width:100%; min-height:40vh; resize:vertical; padding:12px; border:1px solid #1e1e1e; border-radius:12px; background:var(--bg); color:var(--fg); font-size:16px; line-height:1.5;"
             placeholder="Type your notes here...">${val.replace(/</g,'&lt;')}</textarea>
           <div class="muted" id="notesSaveHint" style="font-size:12px;">Changes are saved automatically</div>
         </div>
@@ -4528,7 +4554,7 @@ function showExpandPreview(){
           const desc  = String(d.description || '').trim();
           const id    = `copyKeying_ck_${idx}`;
           html += `
-            <label for="${id}" style="display:grid;grid-template-columns:auto 1.2fr 2fr;align-items:center;gap:8px;padding:8px 10px;border:1px solid #1e1e1e;border-radius:10px;background:#0e0e0e;cursor:pointer;">
+            <label for="${id}" style="display:grid;grid-template-columns:auto 1.2fr 2fr;align-items:center;gap:8px;padding:8px 10px;border:1px solid #1e1e1e;border-radius:10px;background:var(--bg);cursor:pointer;">
               <input type="checkbox" id="${id}" data-door-idx="${idx}">
               <div><strong>${stamp}</strong></div>
               <div class="muted">${desc}</div>
@@ -5596,8 +5622,9 @@ function showExpandPreview(){
          row.type = 'button';
          row.style.cssText =
            'display:flex;justify-content:space-between;align-items:center;width:100%;' +
-           'background:#0e0e0e;border:0;border-bottom:1px solid #1e1e1e;color:inherit;' +
+           'background:var(--list-row-bg);border:0;border-bottom:1px solid #1e1e1e;color:inherit;' +
            'padding:14px 16px;text-align:left;cursor:pointer';
+
 
          const left = document.createElement('div');
          left.innerHTML =
@@ -5615,14 +5642,15 @@ function showExpandPreview(){
            // clear previous selection visuals
            Array.from(loadListEl.children).forEach(el=>{
              el.style.borderLeft = '0';
-             el.style.background = '#0e0e0e';
+             el.style.background = 'var(--list-row-bg)';
            });
            // highlight this one
            row.style.borderLeft = '3px solid var(--accent)';
-           row.style.background = '#0b0b0b';
+           row.style.background = 'var(--list-row-bg-selected)';
            _selectedId = s.id;
            openBtn.disabled = false;
          };
+
 
          loadListEl.appendChild(row);
        });
@@ -5648,13 +5676,13 @@ function showExpandPreview(){
 
 
       managerListEl.innerHTML = '';
-      systems.forEach((s, idx)=>{
-        const row = document.createElement('button');
-        row.type = 'button';
-        row.style.cssText =
-          'display:flex;justify-content:space-between;align-items:center;width:100%;' +
-          'background:#0e0e0e;border:0;border-bottom:1px solid #1e1e1e;color:inherit;' +
-          'padding:14px 16px;text-align:left;cursor:pointer';
+       systems.forEach((s, idx)=>{
+         const row = document.createElement('button');
+         row.type = 'button';
+         row.style.cssText =
+           'display:flex;justify-content:space-between;align-items:center;width:100%;' +
+           'background:var(--list-row-bg);border:0;border-bottom:1px solid #1e1e1e;color:inherit;' +
+           'padding:14px 16px;text-align:left;cursor:pointer';
 
         const left = document.createElement('div');
         left.innerHTML =
@@ -5668,15 +5696,16 @@ function showExpandPreview(){
         row.appendChild(left);
         row.appendChild(right);
 
-        row.onclick = ()=>{
-          [...managerListEl.children].forEach(el=>{
-            el.style.borderLeft = '0';
-            el.style.background = '#0e0e0e';
-          });
-          row.style.borderLeft = '3px solid var(--accent)';
-          row.style.background = '#0b0b0b';
-          _managerSelectedId = s.id;
-        };
+         row.onclick = ()=>{
+           Array.from(managerListEl.children).forEach(el=>{
+             el.style.borderLeft = '0';
+             el.style.background = 'var(--list-row-bg)';
+           });
+           row.style.borderLeft = '3px solid var(--accent)';
+           row.style.background = 'var(--list-row-bg-selected)';
+           _managerSelectedId = s.id;
+         };
+
 
         if (idx === 0) row.style.borderTopLeftRadius = row.style.borderTopRightRadius = '12px';
         if (idx === systems.length-1){
