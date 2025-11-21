@@ -8,9 +8,11 @@ const ASSETS = [
   "./manifest.webmanifest",
   "./sw.js",
   "./background.png",
+  "./backgroundC.png",
   "./icon-192.png",
   "./icon-512.png"
 ];
+
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
