@@ -1182,8 +1182,27 @@
     const $ = s => document.querySelector(s);
     const randInt = (a,b)=>Math.floor(Math.random()*(b-a+1))+a;
 
+    // --- Zoom control (used only for Add Door modal) ---
+    const viewportMeta = document.querySelector('meta[name="viewport"]');
+    const viewportDefaultContent = viewportMeta
+      ? viewportMeta.getAttribute('content')
+      : 'width=device-width,initial-scale=1,viewport-fit=cover';
+
+    function disableZoom(){
+      if (!viewportMeta) return;
+      viewportMeta.setAttribute(
+        'content',
+        'width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover'
+      );
+    }
+
+    function enableZoom(){
+      if (!viewportMeta) return;
+      viewportMeta.setAttribute('content', viewportDefaultContent);
+    }
+
     // ---------- Theme handling ----------
-    // ---------- Theme handling ----------
+
     const THEME_KEY = 'codegen_theme';
 
     function applyTheme(theme){
@@ -4334,7 +4353,10 @@ function showExpandPreview(){
       document.getElementById('doorNotes').value    = model.notes || '';
       m.hidden = false;
     }
-    function closeDoorModal(){ document.getElementById('doorModal').hidden = true; }
+    function closeDoorModal(){
+      document.getElementById('doorModal').hidden = true;
+      enableZoom();
+    }
 
     // --- Door Search Modal helpers ---
     function openDoorSearchModal(){
@@ -5041,6 +5063,7 @@ function showExpandPreview(){
           const nextStamp = getNextStamping(baseStamp);
           const nextDesc  = getNextDescription(baseDesc);
 
+          disableZoom();
           openDoorModal({
             stamping: nextStamp,
             description: nextDesc,
@@ -5049,6 +5072,7 @@ function showExpandPreview(){
             keys: []
           });
         };
+
 
        document.getElementById('doorEdit').onclick = ()=>{
          if (selectedIdx < 0) return;
