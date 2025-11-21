@@ -2886,6 +2886,7 @@ function applyCkRotation(tmkStr, baseArrayStr, state){
 
     // ---------- CK rotation (C → c) ---------- 
     // Each run treats ckAlloc as "new rotated CK chambers to add now".
+    // Always rotate into the furthest-right available "0" in the array.
     if (ckAlloc > 0){
         const changeOrRotIdx = chars
             .map((c,i)=> (c==='C' || c==='c') ? i : -1)
@@ -2894,16 +2895,17 @@ function applyCkRotation(tmkStr, baseArrayStr, state){
         if (changeOrRotIdx.length){
             const rightmostC = Math.max(...changeOrRotIdx);
 
-            // Candidate zeros to convert to rotated CK slots: zeros LEFT of the C/c block
+            // Candidate zeros to convert to rotated CK slots: ANY "0" in the array
             const zeroIdxForC = chars
                 .map((c,i)=> c==='0' ? i : -1)
-                .filter(i=> i>=0 && i < rightmostC);
+                .filter(i=> i>=0);
 
             if (zeroIdxForC.length){
                 let remainingC = Math.min(ckAlloc, zeroIdxForC.length);
 
                 // Work from right-most zero leftwards:
                 //   00000C → 0000cC
+                //   MC0000 → MC000c
                 //   0000CC → 000cCC
                 //   000cCC → 00ccCC
                 for (let i = zeroIdxForC.length - 1; i >= 0 && remainingC > 0; i--){
@@ -2915,8 +2917,10 @@ function applyCkRotation(tmkStr, baseArrayStr, state){
         }
     }
 
+
     // ---------- MK rotation (M → m), mirroring CK rules ---------- 
     // Each run treats mkAlloc as "new rotated MK chambers to add now".
+    // Always rotate into the furthest-right available "0" in the array.
     if (mkAlloc > 0){
         // Treat both M and m as the master block for anchoring rotations
         const masterOrRotIdx = chars
@@ -2926,16 +2930,17 @@ function applyCkRotation(tmkStr, baseArrayStr, state){
         if (masterOrRotIdx.length){
             const rightmostM = Math.max(...masterOrRotIdx);
 
-            // Candidate zeros to convert to rotated MK slots: zeros LEFT of the M/m block
+            // Candidate zeros to convert to rotated MK slots: ANY "0" in the array
             const zeroIdxForM = chars
                 .map((c,i)=> c==='0' ? i : -1)
-                .filter(i=> i>=0 && i < rightmostM);
+                .filter(i=> i>=0);
 
             if (zeroIdxForM.length){
                 let remainingM = Math.min(mkAlloc, zeroIdxForM.length);
 
                 // Same pattern: work from right-most zero leftwards, but mark as 'm'
                 //   00000M  → 0000mM
+                //   MM0000  → MM000m
                 //   0000MM  → 000mMM
                 //   000mMM  → 00mmMM
                 for (let i = zeroIdxForM.length - 1; i >= 0 && remainingM > 0; i--){
@@ -2946,6 +2951,7 @@ function applyCkRotation(tmkStr, baseArrayStr, state){
             }
         }
     }
+
 
 
     const newArray = chars.join('');
