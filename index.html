@@ -1181,6 +1181,7 @@
     const randInt = (a,b)=>Math.floor(Math.random()*(b-a+1))+a;
 
     // ---------- Theme handling ----------
+    // ---------- Theme handling ----------
     const THEME_KEY = 'codegen_theme';
 
     function applyTheme(theme){
@@ -1225,8 +1226,14 @@
       }catch(e){
         theme = 'original';
       }
+
+      // first apply
       applyTheme(theme);
+
+      // tiny micro-refresh to fix bottom not painting properly on first load
+      setTimeout(()=>applyTheme(theme), 40);
     }
+
     // ---------- Admin Settings modal ----------
     const adminBtn = document.getElementById('adminSettingsBtn');
     const adminModal = document.getElementById('adminSettingsModal');
@@ -1265,8 +1272,26 @@
       };
     }
 
-    // Initialise theme once controls exist
-    initTheme();
+    // Initialise theme once controls exist (and re-apply on pageshow)
+    if (document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', initTheme);
+    } else {
+      initTheme();
+    }
+
+    window.addEventListener('pageshow', ()=>{
+      let theme = 'original';
+      try{
+        const stored = localStorage.getItem(THEME_KEY);
+        if (stored === 'commercial' || stored === 'original'){
+          theme = stored;
+        }
+      }catch(e){
+        theme = 'original';
+      }
+      applyTheme(theme);
+    });
+
 
 
     function showMessage(msg){
