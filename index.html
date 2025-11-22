@@ -322,20 +322,21 @@
     }
 
     body.theme-commercial{
-      --bg:#ffffff;
-      --fg:#000000;
-      --accent:#55E2E9;      /* blue accent */
-      --muted:#555555;
-      --mk:#000000;
-      --tmk:#000000;
-      --bgimg:url("backgroundC.png");
-      --list-row-bg:#ffffff;
-      --list-row-bg-selected:#e8f0ff;
-      --card-bg:#ffffff;
-      --card-border:#dddddd;
-      --card-shadow:0 4px 18px rgba(0,0,0,0.12);
-      --field-bg:#ffffff;
+      --bg:#ffffff;                      /* Main app background colour */
+      --fg:#000000;                      /* Default text colour */
+      --accent:#9900cc;                  /* Main Dan Theme */
+      --muted:#555555;                   /* Muted/dimmed text */
+      --mk:#000000;                      /* MK code text colour */
+      --tmk:#000000;                     /* TMK code text colour */
+      --bgimg:url("backgroundC.png");    /* Full-screen background image */
+      --list-row-bg:#ffffff;             /* Normal list row background */
+      --list-row-bg-selected:#ffffff;    /* Selected/highlighted row background */
+      --card-bg:#ffffff;                 /* Modal/card background */
+      --card-border:#dddddd;             /* Modal/card/list-row borders */
+      --card-shadow:0 4px 18px rgba(0,0,0,0.12);  /* Card shadow depth */
+      --field-bg:#ffffff;                /* Input/text box background */
     }
+
 
 
 
@@ -374,7 +375,7 @@
 
     body.theme-commercial button.primary{
       background:var(--accent);
-      border-color:#185ad1;
+      border-color:#c0c0c0;
       color:#ffffff;
     }
 
@@ -864,7 +865,7 @@
        </p>
        <div class="btnbar" style="justify-content:flex-end">
          <button class="primary" id="assignWarnNo">No</button>
-         <button id="assignWarnYes" style="background:var(--warn); border-color:#ff5252; color:#ffffff;">Yes</button>
+          <button id="assignWarnYes" style="background:var(--warn); border-color:#ff5252; color:var(--fg);">Yes</button>
        </div>
      </div>
    </div>
@@ -1126,10 +1127,11 @@
       <p class="muted" style="margin-top:10px;">Are you sure you want to continue?</p>
       <div class="btnbar" style="justify-content:flex-end; gap:8px; margin-top:12px;">
         <button class="primary" id="tmkWarnNo">No</button>
-        <button id="tmkWarnYes" style="background:var(--warn); border-color:#ff5252; color:#ffffff;">Yes</button>
+        <button id="tmkWarnYes" style="background:var(--warn); border-color:#ff5252; color:var(--fg);">Yes</button>
       </div>
     </div>
   </div>
+  
 
   <!-- Help Modal -->
   <div id="helpModal" class="modal" hidden>
@@ -5420,7 +5422,7 @@ function showExpandPreview(){
               x.style.background  = 'var(--field-bg)';
             });
             b.style.borderColor = 'var(--accent)';
-            b.style.background  = '#0b0b0b';
+            b.style.background  = 'var(--list-row-bg-selected)';
             selectedCode = String(b.getAttribute('data-code') || '');
           };
         });
