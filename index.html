@@ -4495,7 +4495,6 @@ function showExpandPreview(){
       if (savedIdx == null) return;
       closeDoorModal();
     };
-
     const doorAddAnotherBtn = document.getElementById('doorAddAnother');
     let doorAddAnotherLastTouch = 0;
 
@@ -4520,11 +4519,6 @@ function showExpandPreview(){
 
     // Normal click (desktop / mouse)
     doorAddAnotherBtn.addEventListener('click', ()=>{
-      const now = Date.now();
-      // If a touch just happened, ignore the synthetic click
-      if (now - doorAddAnotherLastTouch < 400) {
-        return;
-      }
       handleDoorAddAnother();
     });
 
@@ -4533,9 +4527,54 @@ function showExpandPreview(){
       // We MUST preventDefault here to stop the zoom
       e.preventDefault();
 
-      doorAddAnotherLastTouch = Date.now();
+      const now = Date.now();
+      // Avoid double-firing from synthetic click
+      if (now - doorAddAnotherLastTouch < 250) {
+        doorAddAnotherLastTouch = now;
+        return;
+      }
+      doorAddAnotherLastTouch = now;
+
       handleDoorAddAnother();
     }, { passive:false });
+
+    // --- iOS anti-zoom for Pinning Prev/Next buttons ---
+    const doorPinningPrevBtn = document.getElementById('doorPinningPrev');
+    const doorPinningNextBtn = document.getElementById('doorPinningNext');
+    let doorPinningPrevLastTouch = 0;
+    let doorPinningNextLastTouch = 0;
+
+    if (doorPinningPrevBtn){
+      doorPinningPrevBtn.addEventListener('touchend', (e)=>{
+        e.preventDefault();
+
+        const now = Date.now();
+        if (now - doorPinningPrevLastTouch < 250){
+          doorPinningPrevLastTouch = now;
+          return;
+        }
+        doorPinningPrevLastTouch = now;
+
+        // trigger existing click logic (whatever wirePinningClose set up)
+        doorPinningPrevBtn.click();
+      }, { passive:false });
+    }
+
+    if (doorPinningNextBtn){
+      doorPinningNextBtn.addEventListener('touchend', (e)=>{
+        e.preventDefault();
+
+        const now = Date.now();
+        if (now - doorPinningNextLastTouch < 250){
+          doorPinningNextLastTouch = now;
+          return;
+        }
+        doorPinningNextLastTouch = now;
+
+        // trigger existing click logic (whatever wirePinningClose set up)
+        doorPinningNextBtn.click();
+      }, { passive:false });
+    }
 
 
 
