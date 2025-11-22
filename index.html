@@ -48,8 +48,18 @@
     }
 
     body{
-      background:var(--bg) var(--bgimg) center center/cover no-repeat fixed;
+      background:var(--bg);
+      position:relative;
+      overflow-x:hidden;
     }
+
+    #bgCover{
+      position:fixed;
+      inset:0;
+      z-index:-1;
+      background:var(--bgimg) center center/cover no-repeat;
+    }
+
 
 
     .wrap{max-width:900px;margin:0 auto;padding:20px}
@@ -437,6 +447,8 @@
   </style>
 </head>
 <body>
+  <div id="bgCover"></div>
+
   <!-- Main Screen -->
     <div id="mainScreen"
      style="display:flex;flex-direction:column;justify-content:center;align-items:center;
