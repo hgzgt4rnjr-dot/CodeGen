@@ -4520,6 +4520,11 @@ function showExpandPreview(){
 
     // Normal click (desktop / mouse)
     doorAddAnotherBtn.addEventListener('click', ()=>{
+      const now = Date.now();
+      // If a touch just happened, ignore the synthetic click
+      if (now - doorAddAnotherLastTouch < 400) {
+        return;
+      }
       handleDoorAddAnother();
     });
 
@@ -4528,16 +4533,10 @@ function showExpandPreview(){
       // We MUST preventDefault here to stop the zoom
       e.preventDefault();
 
-      const now = Date.now();
-      // Avoid double-firing from synthetic click
-      if (now - doorAddAnotherLastTouch < 250) {
-        doorAddAnotherLastTouch = now;
-        return;
-      }
-      doorAddAnotherLastTouch = now;
-
+      doorAddAnotherLastTouch = Date.now();
       handleDoorAddAnother();
     }, { passive:false });
+
 
 
 
