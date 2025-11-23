@@ -2903,14 +2903,14 @@ ${pad(beforeLine2,22)}${afterLine2}`;
        const tab = mode || 'notes';
 
        // skeleton: main area + sub-tabs row
-       content.innerHTML = `
-         <div id="adminMain" style="min-height:50vh;"></div>
-         <div class="btnbar" id="adminTabs" style="margin-top:16px;flex-wrap:wrap;justify-content:flex-start;gap:8px;">
-           <button class="subtabbtn" data-tab="notes">Notes</button>
-           <button class="subtabbtn" data-tab="signatories">Signatories</button>
-           <button class="subtabbtn" data-tab="parts">Parts Usage</button>
-           <button class="subtabbtn" data-tab="export">Import / Export</button>
-         </div>
+        content.innerHTML = `
+          <div id="adminMain" style="min-height:50vh; max-height:50vh; overflow:auto;"></div>
+           <div class="btnbar" id="adminTabs" style="margin-top:16px;flex-wrap:wrap;justify-content:flex-start;gap:8px;">
+            <button class="subtabbtn" data-tab="notes">Notes</button>
+            <button class="subtabbtn" data-tab="signatories">Signatories</button>
+            <button class="subtabbtn" data-tab="parts">System Usage</button>
+            <button class="subtabbtn" data-tab="export">Import / Export</button>
+          </div>
        `;
 
 
@@ -3140,7 +3140,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
                    </div>
                    <div>
                      <label for="sigPhoneInput">Phone Number</label>
-                     <input id="sigPhoneInput" type="tel">
+                     <input id="sigPhoneInput" type="text" inputmode="tel" pattern="[0-9]*">
                    </div>
                  </div>
                  <div class="btnbar" style="justify-content:flex-end;margin-top:14px;">
@@ -3317,18 +3317,19 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
 
 
-       // --- PARTS USAGE SUBTAB ---
-        // --- PARTS USAGE SUBTAB ---
+        // --- PARTS / SYSTEM USAGE SUBTAB ---
         function renderPartsSection(){
           const keys  = Array.isArray(_currentSystem.keys)  ? _currentSystem.keys  : [];
           const doors = Array.isArray(_currentSystem.doors) ? _currentSystem.doors : [];
 
+          // --- Total keys cut ---
           let totalKeys = 0;
           keys.forEach(k=>{
             const q = Number(k.qty || k.quantity || 0);
             if (!Number.isNaN(q)) totalKeys += q;
           });
 
+          // --- Parts usage (by door part number) ---
           const counts = {};
           doors.forEach(d=>{
             const p = String(d.part || d.partNumber || '').trim();
@@ -3338,80 +3339,271 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           const parts = Object.keys(counts).sort((a,b)=>{
             const qa = counts[a] || 0;
             const qb = counts[b] || 0;
-            if (qa !== qb) return qb - qa; // sort by quantity desc
+            if (qa !== qb) return qb - qa;      // quantity desc
             return String(a).localeCompare(String(b));
           });
 
+          // --- Good / Used / Remaining codes ---
+          const rows = Array.isArray(_currentSystem.rows) ? _currentSystem.rows : [];
+          const goodSet = new Set();
+
+          if (rows.length > 1){
+            const body = rows.slice(1);
+            body.forEach(r=>{
+              if (!r || r.length < 2) return;
+              const label = String(r[0] || '').trim();
+              const code  = String(r[1] || '').trim();
+              const err   = (r.length >= 3) ? String(r[2] || '').trim() : '';
+              if (!code) return;
+              // skip TMK / Array meta lines
+              if (label === 'TMK' || label === 'Array') return;
+              // skip bad codes
+              if (err) return;
+              goodSet.add(code);
+            });
+          }
+
+          const goodCodes = goodSet.size;
+
+          let usedCodes = 0;
+          keys.forEach(k=>{
+            const c = String(k.code || k.assignedCode || '').trim();
+            if (!c) return;
+            if (goodSet.has(c)) usedCodes += 1;
+          });
+
+          const remainingCodes = Math.max(0, goodCodes - usedCodes);
+          const usagePercent   = goodCodes > 0
+            ? Math.round((usedCodes / goodCodes) * 100)
+            : 0;
+
+          // --- Layout skeleton ---
+          // --- Layout ---
           main.innerHTML = '';
+
           const wrap = document.createElement('div');
-          wrap.style.display = 'flex';
-          wrap.style.flexDirection = 'column';
-          wrap.style.gap = '10px';
 
-          const label = document.createElement('label');
-          label.className = 'muted';
-          label.style.fontSize = '16px';
-          label.style.fontWeight = '600';
-          label.textContent = 'Parts Usage';
-          wrap.appendChild(label);
 
-          const totalDiv = document.createElement('div');
-          totalDiv.textContent = 'Total Keys Cut: ' + totalKeys;
+          const heading = document.createElement('div');
+          heading.textContent = 'System Usage';
+          heading.style.fontWeight = '600';
+          heading.style.marginBottom = '12px';
+          main.appendChild(heading);
+
+          //
+          // PARTS USAGE
+          //
+          const partsHeader = document.createElement('div');
+          partsHeader.textContent = 'Parts Usage';
+          partsHeader.className = 'muted';
+          partsHeader.style.marginBottom = '4px';
+          wrap.appendChild(partsHeader);
 
           const listHost = document.createElement('div');
           listHost.className = 'out';
-          listHost.style.maxHeight = '40vh';
-          listHost.style.overflow = 'auto';
           listHost.style.padding = '8px';
 
-          if (!parts.length){
-            const msg = document.createElement('div');
-            msg.className = 'muted';
-            msg.textContent = 'No Part Numbers Used Yet.';
-            listHost.appendChild(msg);
+          const partsTable = document.createElement('table');
+          partsTable.style.width = '100%';
+          partsTable.style.borderCollapse = 'collapse';
+          partsTable.style.tableLayout = 'fixed';
+
+          // shared column widths so all Quantity columns line up
+          const partsColgroup = document.createElement('colgroup');
+          const pCol1 = document.createElement('col');
+          const pCol2 = document.createElement('col');
+          pCol1.style.width = '70%';
+          pCol2.style.width = '30%';
+          partsColgroup.appendChild(pCol1);
+          partsColgroup.appendChild(pCol2);
+          partsTable.appendChild(partsColgroup);
+
+          const partsHeadRow = document.createElement('tr');
+          ['Part Number','Quantity'].forEach(txt=>{
+            const th = document.createElement('th');
+            th.textContent = txt;
+            th.style.textAlign = 'left';
+            th.style.fontSize = '13px';
+            th.style.padding = '4px 6px';
+            th.style.borderBottom = '1px solid #1e1e1e';
+            partsHeadRow.appendChild(th);
+          });
+          partsTable.appendChild(partsHeadRow);
+
+          if (parts.length === 0){
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 2;
+            td.textContent = 'No doors with part numbers yet.';
+            td.className = 'muted';
+            td.style.padding = '6px';
+            tr.appendChild(td);
+            partsTable.appendChild(tr);
           } else {
-            const table = document.createElement('table');
-            table.style.width = '100%';
-            table.style.borderCollapse = 'collapse';
-
-            const thead = document.createElement('thead');
-            const trh = document.createElement('tr');
-            ['Part Number','Quantity'].forEach((hText)=>{
-              const th = document.createElement('th');
-              th.textContent = hText;
-              th.style.textAlign = 'left';
-              th.style.padding = '4px 6px';
-              th.style.borderBottom = '1px solid var(--border)';
-              trh.appendChild(th);
-            });
-            thead.appendChild(trh);
-            table.appendChild(thead);
-
-            const tbody = document.createElement('tbody');
             parts.forEach(p=>{
               const tr = document.createElement('tr');
+              const tdName = document.createElement('td');
+              const tdQty  = document.createElement('td');
 
-              const td1 = document.createElement('td');
-              td1.textContent = p;
-              td1.style.padding = '4px 6px';
+              tdName.textContent = p;
+              tdQty.textContent  = counts[p];
+              tdName.style.padding = '4px 6px';
+              tdQty.style.padding  = '4px 6px';
 
-              const td2 = document.createElement('td');
-              td2.textContent = String(counts[p]);
-              td2.style.padding = '4px 6px';
-
-              tr.appendChild(td1);
-              tr.appendChild(td2);
-              tbody.appendChild(tr);
+              tr.appendChild(tdName);
+              tr.appendChild(tdQty);
+              partsTable.appendChild(tr);
             });
-
-            table.appendChild(tbody);
-            listHost.appendChild(table);
           }
 
+          listHost.appendChild(partsTable);
           wrap.appendChild(listHost);
-          wrap.appendChild(totalDiv);
+
+          //
+          // CODE USAGE
+          //
+          const codeHeader = document.createElement('div');
+          codeHeader.textContent = 'Code Usage';
+          codeHeader.className = 'muted';
+          codeHeader.style.marginTop = '12px';
+          codeHeader.style.marginBottom = '4px';
+          wrap.appendChild(codeHeader);
+
+          const codeHost = document.createElement('div');
+          codeHost.className = 'out';
+          codeHost.style.padding = '8px';
+
+          const codeTable = document.createElement('table');
+          codeTable.style.width = '100%';
+          codeTable.style.borderCollapse = 'collapse';
+          codeTable.style.tableLayout = 'fixed';
+
+          const codeColgroup = document.createElement('colgroup');
+          const cCol1 = document.createElement('col');
+          const cCol2 = document.createElement('col');
+          cCol1.style.width = '70%';
+          cCol2.style.width = '30%';
+          codeColgroup.appendChild(cCol1);
+          codeColgroup.appendChild(cCol2);
+          codeTable.appendChild(codeColgroup);
+
+          const codeHeadRow = document.createElement('tr');
+          ['Code Label','Quantity'].forEach(txt=>{
+            const th = document.createElement('th');
+            th.textContent = txt;
+            th.style.textAlign = 'left';
+            th.style.fontSize = '13px';
+            th.style.padding = '4px 6px';
+            th.style.borderBottom = '1px solid #1e1e1e';
+            codeHeadRow.appendChild(th);
+          });
+          codeTable.appendChild(codeHeadRow);
+
+          const addCodeRow = (label, value)=>{
+            const tr = document.createElement('tr');
+            const tdLabel = document.createElement('td');
+            const tdVal   = document.createElement('td');
+            tdLabel.textContent = label;
+            tdVal.textContent   = value;
+            tdLabel.style.padding = '4px 6px';
+            tdVal.style.padding   = '4px 6px';
+            tr.appendChild(tdLabel);
+            tr.appendChild(tdVal);
+            codeTable.appendChild(tr);
+          };
+
+          addCodeRow('Total Good Codes',      goodCodes);
+          addCodeRow('Used Codes',      usedCodes);
+          addCodeRow('Remaining Codes', remainingCodes);
+
+          codeHost.appendChild(codeTable);
+
+          // % + bar INSIDE the Code Usage box
+          const pctLabel = document.createElement('div');
+          pctLabel.className = 'muted';
+          pctLabel.style.fontSize = '13px';
+          pctLabel.style.marginTop = '8px';
+          pctLabel.textContent = usagePercent + '% Used';
+          codeHost.appendChild(pctLabel);
+
+          const barOuter = document.createElement('div');
+          barOuter.style.marginTop = '4px';
+          barOuter.style.width = '100%';
+          barOuter.style.height = '10px';
+          barOuter.style.borderRadius = '999px';
+          barOuter.style.border = '1px solid #1e1e1e';
+          barOuter.style.overflow = 'hidden';
+          barOuter.style.background = '#101010';
+
+          const barInner = document.createElement('div');
+          barInner.style.height = '100%';
+          barInner.style.width = usagePercent + '%';
+          barInner.style.background = 'var(--accent)';
+          barInner.style.transition = 'width 0.2s ease-out';
+
+          barOuter.appendChild(barInner);
+          codeHost.appendChild(barOuter);
+
+          wrap.appendChild(codeHost);
+
+          //
+          // KEYS TABLE
+          //
+          const keysHeader = document.createElement('div');
+          keysHeader.textContent = 'Key Usage';
+          keysHeader.className = 'muted';
+          keysHeader.style.marginTop = '12px';
+          keysHeader.style.marginBottom = '4px';
+          wrap.appendChild(keysHeader);
+
+          const keysHost = document.createElement('div');
+          keysHost.className = 'out';
+          keysHost.style.padding = '8px';
+
+          const keysTable = document.createElement('table');
+          keysTable.style.width = '100%';
+          keysTable.style.borderCollapse = 'collapse';
+          keysTable.style.tableLayout = 'fixed';
+
+          const keysColgroup = document.createElement('colgroup');
+          const kCol1 = document.createElement('col');
+          const kCol2 = document.createElement('col');
+          kCol1.style.width = '70%';
+          kCol2.style.width = '30%';
+          keysColgroup.appendChild(kCol1);
+          keysColgroup.appendChild(kCol2);
+          keysTable.appendChild(keysColgroup);
+
+          const keysHeadRow = document.createElement('tr');
+          ['Key Profile','Quantity'].forEach(txt=>{
+            const th = document.createElement('th');
+            th.textContent = txt;
+            th.style.textAlign = 'left';
+            th.style.fontSize = '13px';
+            th.style.padding = '4px 6px';
+            th.style.borderBottom = '1px solid #1e1e1e';
+            keysHeadRow.appendChild(th);
+          });
+          keysTable.appendChild(keysHeadRow);
+
+          const kRow = document.createElement('tr');
+          const kLabel = document.createElement('td');
+          const kVal   = document.createElement('td');
+          kLabel.textContent = 'Standard C4';
+          kVal.textContent   = totalKeys;
+          kLabel.style.padding = '4px 6px';
+          kVal.style.padding   = '4px 6px';
+          kRow.appendChild(kLabel);
+          kRow.appendChild(kVal);
+          keysTable.appendChild(kRow);
+
+          keysHost.appendChild(keysTable);
+          wrap.appendChild(keysHost);
+
           main.appendChild(wrap);
         }
+
+
 
 
        // --- IMPORT / EXPORT SUBTAB (stub for now) ---
