@@ -458,6 +458,10 @@
         color:#000000;            /* Commercial theme */
     }
 
+    #systemNotesTA:focus{
+        outline:none;
+        box-shadow:0 0 0 2px var(--accent);
+    }
 
 
 
@@ -2915,15 +2919,17 @@ ${pad(beforeLine2,22)}${afterLine2}`;
        const tab = mode || 'notes';
 
        // skeleton: main area + sub-tabs row
+        // skeleton: main area + sub-tabs row
         content.innerHTML = `
-          <div id="adminMain" style="min-height:50vh; max-height:50vh; overflow:auto;"></div>
+          <div id="adminMain" style="min-height:50vh;"></div>
            <div class="btnbar" id="adminTabs" style="margin-top:16px;flex-wrap:wrap;justify-content:flex-start;gap:8px;">
             <button class="subtabbtn" data-tab="notes">Notes</button>
             <button class="subtabbtn" data-tab="signatories">Signatories</button>
             <button class="subtabbtn" data-tab="parts">System Usage</button>
             <button class="subtabbtn" data-tab="export">Import / Export</button>
           </div>
-       `;
+        `;
+
 
 
        const main = document.getElementById('adminMain');
@@ -3394,13 +3400,15 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           main.innerHTML = '';
 
           const wrap = document.createElement('div');
-
+          wrap.style.maxHeight = '50vh';
+          wrap.style.overflowY = 'auto';
 
           const heading = document.createElement('div');
           heading.textContent = 'System Usage';
           heading.style.fontWeight = '600';
           heading.style.marginBottom = '12px';
           main.appendChild(heading);
+
 
           //
           // PARTS USAGE
