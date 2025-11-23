@@ -239,7 +239,7 @@
     .search-active {
         color: var(--accent) !important;
         border-color: var(--accent) !important;
-        background:#0b0b0b !important;
+        background:var(--field-bg) !important;
     }
 
     
@@ -542,13 +542,13 @@
     <div class="card" style="margin-top:8px;">
       <div class="inline" style="justify-content:space-between; width:100%; flex-wrap:wrap; gap:10px;">
         <div class="btnbar" style="margin-top:0">
-          <button id="btnSysKeys"  class="tabbtn">Keys</button>
-          <button id="btnSysDoors" class="tabbtn">Doors</button>
-          <button id="btnSysTree"  class="tabbtn">Coding Tree</button>
-          <button id="btnSysNotes" class="tabbtn">Notes</button>
-          <button id="btnSysKeyingGrid" class="tabbtn">Keying</button>
-          <button id="btnSysCodingCheck" class="tabbtn">Coding Check</button>
-          <button id="btnSysClose">Close System</button>
+           <button id="btnSysKeys"  class="tabbtn">Keys</button>
+           <button id="btnSysDoors" class="tabbtn">Doors</button>
+           <button id="btnSysTree"  class="tabbtn">Coding Tree</button>
+           <button id="btnSysNotes" class="tabbtn">Admin</button>
+           <button id="btnSysKeyingGrid" class="tabbtn">Keying</button>
+           <button id="btnSysCodingCheck" class="tabbtn">Coding Check</button>
+           <button id="btnSysClose">Close System</button>
         </div>
       </div>
     </div>
@@ -1193,6 +1193,19 @@
       </div>
     </div>
   </div>
+
+   <!-- Remove Signatory Modal -->
+   <div id="removeSigModal" class="modal" hidden>
+     <div class="backdrop" id="removeSigBackdrop"></div>
+     <div class="dialog">
+       <h3>Remove Signatory</h3>
+       <div id="removeSigLine" class="muted" style="margin:8px 0 12px 0;"></div>
+       <div class="btnbar" style="justify-content:flex-end">
+         <button id="removeSigCancel">Cancel</button>
+         <button id="removeSigConfirm" class="warn">Remove</button>
+       </div>
+     </div>
+   </div>
 
 
 
@@ -2263,12 +2276,13 @@ ${pad(beforeLine2,22)}${afterLine2}`;
     const sysViewId   = document.getElementById('sysViewId');
     const sysViewDesc = document.getElementById('sysViewDesc');
 
-     let _selectedId = null;           // Load screen selection
-     let _managerSelectedId = null;    // Manager screen selection
-     let _currentSystem = null;
+      let _selectedId = null;           // Load screen selection
+      let _managerSelectedId = null;    // Manager screen selection
+      let _currentSystem = null;
+      let _adminSubtab = 'notes';       // 'notes' | 'signatories' | 'parts' | 'import'
 
-     // Load Screen search state
-     let _loadSearch = {
+      // Load Screen search state
+      let _loadSearch = {
        number   : '',
        desc     : '',
        keyStamp : '',
@@ -2314,25 +2328,28 @@ ${pad(beforeLine2,22)}${afterLine2}`;
       window.scrollTo(0,0);
     }
 
-    function showSystem(){
-      mainScreen.style.display    = 'none';
-      createScreen.style.display  = 'none';
-      loadScreen.style.display    = 'none';
-      managerScreen.style.display = 'none';
-      systemScreen.style.display  = 'block';
+     function showSystem(){
+       mainScreen.style.display    = 'none';
+       createScreen.style.display  = 'none';
+       loadScreen.style.display    = 'none';
+       managerScreen.style.display = 'none';
+       systemScreen.style.display  = 'block';
 
-      // default view = Notes (and highlight the Notes tab)
-      const content = document.getElementById('systemContent');
-      if (content && typeof renderNotesView === 'function') {
-        renderNotesView();
-      }
-      const tabs = document.querySelectorAll('.tabbtn');
-      tabs.forEach(b => b && b.classList.remove('active'));
-      const notesBtn = document.getElementById('btnSysNotes');
-      if (notesBtn) notesBtn.classList.add('active');
+       // default view = Admin > Notes (and highlight the Admin tab)
+       _adminSubtab = 'notes';
+       const content = document.getElementById('systemContent');
+       if (content && typeof renderNotesView === 'function') {
+         renderNotesView('notes');
+       }
+       const tabs = document.querySelectorAll('.tabbtn');
+       tabs.forEach(b => b && b.classList.remove('active'));
+       const notesBtn = document.getElementById('btnSysNotes');
+       if (notesBtn) notesBtn.classList.add('active');
 
-      window.scrollTo(0,0);
-    }
+       window.scrollTo(0,0);
+     }
+
+
     // --- Save Confirm Modal ---
     (function(){
       const modal = document.getElementById('saveConfirmModal');
@@ -2742,6 +2759,12 @@ ${pad(beforeLine2,22)}${afterLine2}`;
             }
           } else {
             // SAVE CHANGES
+
+            // remember current scroll position of the keying grid
+            const scrollBox = content.querySelector('div[style*="max-height:60vh"]');
+            const savedScrollTop  = scrollBox ? scrollBox.scrollTop  : 0;
+            const savedScrollLeft = scrollBox ? scrollBox.scrollLeft : 0;
+
             const newDoors = JSON.parse(JSON.stringify(_currentSystem.doors||[]));
 
             const cbs2 = content.querySelectorAll('input.kgCB');
@@ -2773,8 +2796,17 @@ ${pad(beforeLine2,22)}${afterLine2}`;
               btnAddAbove.disabled = true;
             }
 
+            // rebuild grid in view mode
             renderKeyingGrid(); // reload clean
+
+            // restore scroll position on the new grid
+            const newScrollBox = content.querySelector('div[style*="max-height:60vh"]');
+            if (newScrollBox) {
+              newScrollBox.scrollTop  = savedScrollTop;
+              newScrollBox.scrollLeft = savedScrollLeft;
+            }
           }
+
         };
 
 
@@ -2861,15 +2893,50 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
 
 
-    // ---- Notes view (editable, auto-save) ----
-    function renderNotesView(){
-      if (!_currentSystem) return;
-      const content = document.getElementById('systemContent');
-      if (!content) return;
+     // ---- Admin view (Notes / Signatories / Parts Usage / Import-Export) ----
+     function renderNotesView(mode){
+       if (!_currentSystem) return;
+       const content = document.getElementById('systemContent');
+       if (!content) return;
 
-      const val = String(_currentSystem.notes || '');
+       const tab = mode || 'notes';
 
-      content.innerHTML = `
+       // skeleton: main area + sub-tabs row
+       content.innerHTML = `
+         <div id="adminMain" style="min-height:50vh;"></div>
+         <div class="btnbar" id="adminTabs" style="margin-top:16px;flex-wrap:wrap;justify-content:flex-start;gap:8px;">
+           <button class="subtabbtn" data-tab="notes">Notes</button>
+           <button class="subtabbtn" data-tab="signatories">Signatories</button>
+           <button class="subtabbtn" data-tab="parts">Parts Usage</button>
+           <button class="subtabbtn" data-tab="export">Import / Export</button>
+         </div>
+       `;
+
+
+       const main = document.getElementById('adminMain');
+       const tabs = document.querySelectorAll('#adminTabs button[data-tab]');
+
+       // highlight the active sub-tab + wire clicks
+       tabs.forEach(btn=>{
+         const t = btn.getAttribute('data-tab');
+         if (t === tab) btn.classList.add('active');
+         btn.onclick = ()=>{ renderNotesView(t); };
+       });
+
+       function esc(str){
+         return String(str || '').replace(/[&<>"]/g, c=>{
+           if (c === '&') return '&amp;';
+           if (c === '<') return '&lt;';
+           if (c === '>') return '&gt;';
+           return '&quot;';
+         });
+       }
+
+       // --- NOTES SUBTAB (same behaviour as old System Notes) ---
+       function renderNotesSection(){
+         const val = String(_currentSystem.notes || '');
+
+         main.innerHTML = `
         <div style="display:flex;flex-direction:column;gap:10px;">
           <label class="muted" style="font-size:16px; font-weight:600;">System Notes</label>
           <textarea id="systemNotesTA"
@@ -2879,23 +2946,497 @@ ${pad(beforeLine2,22)}${afterLine2}`;
         </div>
       `;
 
+         const ta   = document.getElementById('systemNotesTA');
+         const hint = document.getElementById('notesSaveHint');
+         let t = null;
 
-      const ta = document.getElementById('systemNotesTA');
-      const hint = document.getElementById('notesSaveHint');
-      let t = null;
+         if (ta){
+           ta.addEventListener('input', ()=>{
+             if (t) clearTimeout(t);
+             t = setTimeout(()=>{
+               _currentSystem.notes = ta.value;
+               persistCurrentSystem();
+               if (hint){
+                 hint.textContent = 'Saved';
+                 setTimeout(()=>{ hint.textContent = 'Changes are saved automatically'; }, 1200);
+               }
+             }, 250);
+           });
+         }
+       }
 
-      ta.addEventListener('input', ()=>{
-        if (t) clearTimeout(t);
-        t = setTimeout(()=>{
-          _currentSystem.notes = ta.value;
-          persistCurrentSystem();
-          if (hint){
-            hint.textContent = 'Saved';
-            setTimeout(()=>{ hint.textContent='Changes are saved automatically'; }, 1200);
+        // --- SIGNATORIES SUBTAB ---
+        function renderSignatoriesSection(){
+          const list = Array.isArray(_currentSystem.signatories) ? _currentSystem.signatories : [];
+          if (!Array.isArray(_currentSystem.signatories)) _currentSystem.signatories = list;
+
+          const selectedIdx = (typeof _currentSystem._sigSelected === 'number') ? _currentSystem._sigSelected : -1;
+
+          main.innerHTML = `
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                <label class="muted" style="font-size:16px; font-weight:600; margin:0;">Signatories</label>
+                <div class="btnbar" style="margin-top:0;gap:8px;justify-content:flex-end;">
+                  <button id="sigAddBtn">Add</button>
+                  <button id="sigViewBtn">View</button>
+                </div>
+              </div>
+              <div id="sigListHost"
+                   style="max-height:40vh;overflow:auto;display:flex;flex-direction:column;gap:6px;"></div>
+            </div>
+          `;
+
+          const listHost = document.getElementById('sigListHost');
+          const btnAdd   = document.getElementById('sigAddBtn');
+          const btnView  = document.getElementById('sigViewBtn');
+
+          function buildList(){
+            listHost.innerHTML = '';
+
+            if (!list.length){
+              const msg = document.createElement('div');
+              msg.className = 'muted';
+              msg.textContent = 'No signatories added.';
+              listHost.appendChild(msg);
+              return;
+            }
+
+            list.forEach((s, idx)=>{
+              const row = document.createElement('div');
+              row.className = 'doorrow';
+              if (idx === selectedIdx) row.classList.add('selected');
+
+              // widen name column and add phone column
+              row.style.gridTemplateColumns = '2.5fr 1fr';
+
+              row.innerHTML = `
+                <div class="doorcell">${esc(s.name || '')}</div>
+                <div class="doorcell" style="text-align:right;">${esc(s.phone || '')}</div>
+              `;
+
+              row.onclick = ()=>{
+                _currentSystem._sigSelected = idx;
+                renderNotesView('signatories');
+              };
+
+              listHost.appendChild(row);
+            });
           }
-        }, 250);
-      });
-    }
+
+
+          function ensureSigViewModal(){
+            let modal = document.getElementById('sigViewModal');
+            if (!modal){
+              modal = document.createElement('div');
+              modal.id = 'sigViewModal';
+              modal.className = 'modal';
+              modal.hidden = true;
+              modal.innerHTML = `
+                <div class="backdrop"></div>
+                <div class="dialog">
+                  <h3 id="sigViewTitle">Signatory Details</h3>
+                  <div class="row">
+                    <div>
+                      <label>Name</label>
+                      <div id="sigViewName" class="muted" style="margin-top:2px;"></div>
+                    </div>
+                  </div>
+                  <div class="row" style="margin-top:8px;">
+                    <div>
+                      <label>Email</label>
+                      <div id="sigViewEmail" class="muted" style="margin-top:2px;"></div>
+                    </div>
+                  </div>
+                  <div class="row" style="margin-top:8px;">
+                    <div>
+                      <label>Phone Number</label>
+                      <div id="sigViewPhone" class="muted" style="margin-top:2px;"></div>
+                    </div>
+                  </div>
+                  <div class="btnbar" style="justify-content:flex-end;margin-top:14px;">
+                    <button id="sigViewCloseBtn">Close</button>
+                    <button id="sigViewEditBtn" class="primary">Edit</button>
+                  </div>
+                </div>
+              `;
+              document.body.appendChild(modal);
+            }
+
+            const backdrop = modal.querySelector('.backdrop');
+            const nameEl   = modal.querySelector('#sigViewName');
+            const emailEl  = modal.querySelector('#sigViewEmail');
+            const phoneEl  = modal.querySelector('#sigViewPhone');
+            const btnClose = modal.querySelector('#sigViewCloseBtn');
+            const btnEdit  = modal.querySelector('#sigViewEditBtn');
+
+            return { modal, backdrop, nameEl, emailEl, phoneEl, btnClose, btnEdit };
+          }
+
+          function openView(){
+            const idx = _currentSystem._sigSelected;
+            if (!(idx >= 0 && idx < list.length)) return;
+
+            const sig = list[idx] || { name:'', email:'', phone:'' };
+
+            const {
+              modal, backdrop, nameEl, emailEl, phoneEl, btnClose, btnEdit
+            } = ensureSigViewModal();
+
+            if (nameEl)  nameEl.textContent  = sig.name  || '';
+            if (emailEl) emailEl.textContent = sig.email || '';
+            if (phoneEl) phoneEl.textContent = sig.phone || '';
+
+            function closeModal(){
+              if (modal)   modal.hidden   = true;
+              if (backdrop) backdrop.hidden = true;
+            }
+
+            if (backdrop){
+              backdrop.onclick = ()=>{ closeModal(); };
+            }
+
+            if (btnClose){
+              btnClose.onclick = ()=>{ closeModal(); };
+            }
+
+            if (btnEdit){
+              btnEdit.onclick = ()=>{
+                closeModal();
+                openForm('edit');
+              };
+            }
+
+            if (modal){
+              modal.hidden = false;
+            }
+          }
+
+
+         buildList();
+
+         // ensure a reusable modal exists for Add/Edit
+         function ensureSigModal(){
+           let modal = document.getElementById('sigModal');
+           if (!modal){
+             modal = document.createElement('div');
+             modal.id = 'sigModal';
+             modal.className = 'modal';
+             modal.hidden = true;
+             modal.innerHTML = `
+               <div class="backdrop"></div>
+               <div class="dialog">
+                 <h3 id="sigModalTitle">Signatory</h3>
+                 <div class="row">
+                   <div>
+                     <label for="sigNameInput">Name</label>
+                     <input id="sigNameInput" type="text">
+                   </div>
+                 </div>
+                 <div class="row" style="margin-top:8px;">
+                   <div>
+                     <label for="sigEmailInput">Email</label>
+                     <input id="sigEmailInput" type="text">
+                   </div>
+                   <div>
+                     <label for="sigPhoneInput">Phone Number</label>
+                     <input id="sigPhoneInput" type="text">
+                   </div>
+                 </div>
+                 <div class="btnbar" style="justify-content:flex-end;margin-top:14px;">
+                   <button id="sigCancelBtn">Cancel</button>
+                   <button id="sigRemoveBtn" class="warn">Remove</button>
+                   <button id="sigSaveBtn" class="primary">Save</button>
+                 </div>
+               </div>
+             `;
+             document.body.appendChild(modal);
+           }
+
+           const backdrop  = modal.querySelector('.backdrop');
+           const titleEl   = modal.querySelector('#sigModalTitle');
+           const inpName   = modal.querySelector('#sigNameInput');
+           const inpEmail  = modal.querySelector('#sigEmailInput');
+           const inpPhone  = modal.querySelector('#sigPhoneInput');
+           const btnCancel = modal.querySelector('#sigCancelBtn');
+           const btnSave   = modal.querySelector('#sigSaveBtn');
+           const btnRemove = modal.querySelector('#sigRemoveBtn');
+
+           return { modal, backdrop, titleEl, inpName, inpEmail, inpPhone, btnCancel, btnSave, btnRemove };
+         }
+
+         function openForm(mode){
+           const idx = _currentSystem._sigSelected;
+           const existing = (mode === 'edit' && idx >= 0 && idx < list.length)
+             ? list[idx]
+             : { name:'', email:'', phone:'' };
+
+           const {
+             modal, backdrop, titleEl,
+             inpName, inpEmail, inpPhone,
+             btnCancel, btnSave, btnRemove
+           } = ensureSigModal();
+
+           if (titleEl) titleEl.textContent = (mode === 'edit') ? 'Edit Signatory' : 'Add Signatory';
+
+           if (inpName)  inpName.value  = existing.name  || '';
+           if (inpEmail) inpEmail.value = existing.email || '';
+           if (inpPhone) inpPhone.value = existing.phone || '';
+
+           if (btnRemove){
+             btnRemove.style.display = (mode === 'edit') ? 'inline-block' : 'none';
+           }
+
+           function closeModal(){
+             if (modal)   modal.hidden   = true;
+             if (backdrop) backdrop.hidden = true;
+           }
+
+           if (backdrop){
+             backdrop.onclick = ()=>{ closeModal(); };
+           }
+
+           if (btnCancel){
+             btnCancel.onclick = ()=>{ closeModal(); };
+           }
+
+           if (btnSave){
+             btnSave.onclick = ()=>{
+               const name  = inpName  ? inpName.value.trim()  : '';
+               const email = inpEmail ? inpEmail.value.trim() : '';
+               const phone = inpPhone ? inpPhone.value.trim() : '';
+               if (!name) return; // simple guard
+
+               if (mode === 'edit' && idx >= 0 && idx < list.length){
+                 list[idx] = { name, email, phone };
+               } else {
+                 list.push({ name, email, phone });
+                 _currentSystem._sigSelected = list.length - 1;
+               }
+
+               _currentSystem.signatories = list;
+               persistCurrentSystem();
+               closeModal();
+               renderNotesView('signatories');
+             };
+           }
+
+           if (btnRemove){
+             btnRemove.onclick = ()=>{
+               if (!(mode === 'edit' && idx >= 0 && idx < list.length)){
+                 return;
+               }
+
+               const sig = list[idx] || {};
+               const displayName = sig.name ? sig.name : 'this signatory';
+
+               const confirmModal   = document.getElementById('removeSigModal');
+               const confirmBackdrop = document.getElementById('removeSigBackdrop');
+               const confirmLine     = document.getElementById('removeSigLine');
+               const confirmCancel   = document.getElementById('removeSigCancel');
+               const confirmConfirm  = document.getElementById('removeSigConfirm');
+
+               // Fallback to browser confirm if modal not found
+               if (!confirmModal || !confirmLine || !confirmCancel || !confirmConfirm){
+                 const ok = window.confirm(
+                   `Are you sure you want to remove ${displayName} from the signatories list?`
+                 );
+                 if (!ok) return;
+                 list.splice(idx, 1);
+                 _currentSystem.signatories = list;
+                 _currentSystem._sigSelected = -1;
+                 persistCurrentSystem();
+                 closeModal();
+                 renderNotesView('signatories');
+                 return;
+               }
+
+               // Close the edit modal first so the confirm is on top
+               closeModal();
+
+               confirmLine.textContent =
+                 `Are you sure you want to remove ${displayName} from the signatories list?`;
+
+               function cleanup(){
+                 confirmModal.hidden = true;
+                 if (confirmBackdrop) confirmBackdrop.onclick = null;
+                 if (confirmCancel)   confirmCancel.onclick   = null;
+                 if (confirmConfirm)  confirmConfirm.onclick  = null;
+               }
+
+               if (confirmBackdrop){
+                 confirmBackdrop.onclick = ()=>{ cleanup(); };
+               }
+
+               if (confirmCancel){
+                 confirmCancel.onclick = ()=>{ cleanup(); };
+               }
+
+               if (confirmConfirm){
+                 confirmConfirm.onclick = ()=>{
+                   if (idx >= 0 && idx < list.length){
+                     list.splice(idx, 1);
+                     _currentSystem.signatories = list;
+                     _currentSystem._sigSelected = -1;
+                     persistCurrentSystem();
+                   }
+                   cleanup();
+                   renderNotesView('signatories');
+                 };
+               }
+
+               confirmModal.hidden = false;
+             };
+           }
+
+
+
+
+           if (modal)   modal.hidden   = false;
+           if (backdrop) backdrop.hidden = false;
+           if (inpName) inpName.focus();
+         }
+
+          if (btnAdd){
+            btnAdd.onclick = ()=>{
+              openForm('add');
+            };
+          }
+
+
+          if (btnView){
+            btnView.disabled = !(selectedIdx >= 0 && selectedIdx < list.length);
+            btnView.onclick = ()=>{
+              const idx = _currentSystem._sigSelected;
+              if (idx >= 0 && idx < list.length){
+                openView();
+              }
+            };
+          }
+        }
+
+
+
+       // --- PARTS USAGE SUBTAB ---
+        // --- PARTS USAGE SUBTAB ---
+        function renderPartsSection(){
+          const keys  = Array.isArray(_currentSystem.keys)  ? _currentSystem.keys  : [];
+          const doors = Array.isArray(_currentSystem.doors) ? _currentSystem.doors : [];
+
+          let totalKeys = 0;
+          keys.forEach(k=>{
+            const q = Number(k.qty || k.quantity || 0);
+            if (!Number.isNaN(q)) totalKeys += q;
+          });
+
+          const counts = {};
+          doors.forEach(d=>{
+            const p = String(d.part || d.partNumber || '').trim();
+            if (!p) return;
+            counts[p] = (counts[p] || 0) + 1;
+          });
+          const parts = Object.keys(counts).sort((a,b)=>{
+            const qa = counts[a] || 0;
+            const qb = counts[b] || 0;
+            if (qa !== qb) return qb - qa; // sort by quantity desc
+            return String(a).localeCompare(String(b));
+          });
+
+          main.innerHTML = '';
+          const wrap = document.createElement('div');
+          wrap.style.display = 'flex';
+          wrap.style.flexDirection = 'column';
+          wrap.style.gap = '10px';
+
+          const label = document.createElement('label');
+          label.className = 'muted';
+          label.style.fontSize = '16px';
+          label.style.fontWeight = '600';
+          label.textContent = 'Parts Usage';
+          wrap.appendChild(label);
+
+          const totalDiv = document.createElement('div');
+          totalDiv.textContent = 'Total Keys Cut: ' + totalKeys;
+
+          const listHost = document.createElement('div');
+          listHost.className = 'out';
+          listHost.style.maxHeight = '40vh';
+          listHost.style.overflow = 'auto';
+          listHost.style.padding = '8px';
+
+          if (!parts.length){
+            const msg = document.createElement('div');
+            msg.className = 'muted';
+            msg.textContent = 'No part numbers entered yet.';
+            listHost.appendChild(msg);
+          } else {
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+
+            const thead = document.createElement('thead');
+            const trh = document.createElement('tr');
+            ['Part Number','Quantity'].forEach((hText)=>{
+              const th = document.createElement('th');
+              th.textContent = hText;
+              th.style.textAlign = 'left';
+              th.style.padding = '4px 6px';
+              th.style.borderBottom = '1px solid var(--border)';
+              trh.appendChild(th);
+            });
+            thead.appendChild(trh);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            parts.forEach(p=>{
+              const tr = document.createElement('tr');
+
+              const td1 = document.createElement('td');
+              td1.textContent = p;
+              td1.style.padding = '4px 6px';
+
+              const td2 = document.createElement('td');
+              td2.textContent = String(counts[p]);
+              td2.style.padding = '4px 6px';
+
+              tr.appendChild(td1);
+              tr.appendChild(td2);
+              tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            listHost.appendChild(table);
+          }
+
+          wrap.appendChild(listHost);
+          wrap.appendChild(totalDiv);
+          main.appendChild(wrap);
+        }
+
+
+       // --- IMPORT / EXPORT SUBTAB (stub for now) ---
+       function renderImportExportSection(){
+         main.innerHTML = `
+           <div style="display:flex;flex-direction:column;gap:10px;">
+             <label class="muted" style="font-size:16px; font-weight:600;">Import / Export</label>
+             <div class="muted" style="font-size:13px;">
+               Import / Export tools will be added here in a future update.
+             </div>
+           </div>
+         `;
+       }
+
+       // pick the right subtab to render
+       if (tab === 'signatories'){
+         renderSignatoriesSection();
+       } else if (tab === 'parts'){
+         renderPartsSection();
+       } else if (tab === 'export'){
+         renderImportExportSection();
+       } else {
+         renderNotesSection();
+       }
+     }
+
     
 
 
