@@ -207,12 +207,12 @@
 
     /* shift the "Part Number" header text slightly left (without moving column) */
     .doorgrid .hdr:nth-child(3) {
-      margin-left:-8px;   /* tweak this number (e.g. -6px to -12px) for perfect alignment */
+      margin-left:2px;   /* tweak this number (e.g. -6px to -12px) for perfect alignment */
     }
 
     /* shift the "Description" header slightly right (without moving column) */
     .doorgrid .hdr:nth-child(2) {
-      margin-left:4px;   /* adjust between 4–10px until it lines up visually */
+      margin-left:8px;   /* adjust between 4–10px until it lines up visually */
     }
 
 
@@ -462,8 +462,13 @@
         outline:none;
         box-shadow:0 0 0 2px var(--accent);
     }
-
-
+    
+    /* KD modal + popup list – force black text in Commercial theme */
+    body.theme-commercial #kdPickerList *,
+    body.theme-commercial #kdPickerList label,
+    body.theme-commercial #kdPickerList span {
+        color: #000000 !important;
+    }
 
 
   </style>
@@ -1115,6 +1120,87 @@
     </div>
   </div>
 
+  <!-- KD Keying Modal -->
+  <div id="kdModal" class="modal" hidden>
+    <div class="backdrop" id="kdBackdrop"></div>
+    <div class="dialog" style="max-height:80vh; overflow:auto;">
+      <h3>KD Assist</h3>
+      <p class="muted" style="margin:6px 0 10px 0;">
+        Select key start, door start and key end. KD Assist will select the diagonal keying for change keys and include the key above each time.
+      </p>
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <label class="muted" style="font-size:13px;">Key start</label>
+          <button
+            type="button"
+            id="kdKeyStartField"
+            class="fieldbtn"
+            style="width:100%;margin-top:4px;padding:8px 10px;
+                   border:1px solid #1e1e1e;border-radius:10px;
+                   background:var(--field-bg);text-align:left;">
+            Tap to select
+          </button>
+        </div>
+
+        <div>
+          <label class="muted" style="font-size:13px;">Door start</label>
+          <button
+            type="button"
+            id="kdDoorStartField"
+            class="fieldbtn"
+            style="width:100%;margin-top:4px;padding:8px 10px;
+                   border:1px solid #1e1e1e;border-radius:10px;
+                   background:var(--field-bg);text-align:left;">
+            Tap to select
+          </button>
+        </div>
+
+        <div>
+          <label class="muted" style="font-size:13px;">Key end</label>
+          <button
+            type="button"
+            id="kdKeyEndField"
+            class="fieldbtn"
+            style="width:100%;margin-top:4px;padding:8px 10px;
+                   border:1px solid #1e1e1e;border-radius:10px;
+                   background:var(--field-bg);text-align:left;">
+            Tap to select
+          </button>
+        </div>
+
+        <div>
+          <label class="muted" style="font-size:13px;">Door end (auto)</label>
+          <div
+            id="kdDoorEndPreview"
+            class="out"
+            style="padding:8px; margin-top:4px; min-height:40px;
+                   display:flex; align-items:center;">
+          </div>
+        </div>
+      </div>
+
+      <div class="btnbar" style="justify-content:flex-end; gap:8px; margin-top:10px;">
+        <button id="kdCancel">Cancel</button>
+        <button class="primary" id="kdApply">Apply KD</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KD POPUP PICKER (FULLSCREEN OVERLAY like Assign Codes) -->
+  <div id="kdPickerOverlay" class="modal" hidden>
+    <div class="backdrop" id="kdPickerBackdrop"></div>
+    <div class="dialog" style="max-height:75vh; overflow:auto;">
+      <h3 id="kdPickerTitle">Select Item</h3>
+      <div id="kdPickerList" class="out" style="max-height:60vh; overflow:auto; margin-top:8px;"></div>
+      <div class="btnbar" style="justify-content:flex-end; gap:8px; margin-top:8px;">
+        <button id="kdPickerCancel">Close</button>
+      </div>
+    </div>
+  </div>
+
+
+
   <!-- Delete Door Modal -->
   <div id="deleteDoorModal" class="modal" hidden>
     <div class="backdrop" id="deleteDoorBackdrop"></div>
@@ -1660,13 +1746,15 @@ const mkMeta = masterKeys.map((mkCuts, idx)=>{
         const mkLabel = `MK${i+1}`;
         const mkErrAdj  = hasMaxAdjacentCutError(mkCuts);
         const mkErrDeep = hasDeepestFirstCutError(mkCuts);
-        const mkErrMvr  = hasMinVariationError(mkCuts);
-        const mkErrMsg = [ mkErrAdj && "MAC Error", mkErrDeep && "DFC Error", mkErrMvr && "MCV Error" ]
-                           .filter(Boolean).join(" & ");
+        const mkErrMvr   = hasMinVariationError(mkCuts);
+        const mkErrKinds = [ mkErrAdj && "MAC", mkErrDeep && "DFC", mkErrMvr && "MCV" ]
+                             .filter(Boolean).join(" & ");
+        const mkErrMsg   = mkErrKinds ? `${mkErrKinds} Error` : "";
 
         if (mkErrMsg) errorCount++;
 
         const mkCode = mkCuts.join("");
+
 
 
         lines.push(`%c${mkLabel} - ${mkCode}${mkErrMsg?("  " + mkErrMsg):""} %c`.trim());
@@ -2686,10 +2774,13 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           </div>
           
           <div class="btnbar" style="justify-content:flex-end;margin-top:12px;">
-            <button id="kgAddAbove" class="tabbtn" style="display:none;">Add Key Above</button>
+            <button id="kgKD" class="tabbtn" style="display:none;">KD</button>
+            <button id="kgAddAbove" class="tabbtn" style="display:none;">Key Above</button>
             <button id="kgEdit" class="tabbtn">Edit</button>
             <button id="kgCancel" disabled>Cancel</button>
           </div>
+
+
 
         `;
 
@@ -2697,12 +2788,316 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
         content.innerHTML = html;
 
+        const btnKD       = document.getElementById('kgKD');
         const btnEdit     = document.getElementById('kgEdit');
         const btnCancel   = document.getElementById('kgCancel');
         const btnAddAbove = document.getElementById('kgAddAbove');
 
         let editing      = false;
         let addAboveMode = false;
+
+        // Build a map of "codes that are used as parents" so we can distinguish MK/GMK vs CK
+        const parentCodesUsed = new Set();
+        codeParentMap.forEach((parents)=>{
+          parents.forEach(p=>{
+            if (p) parentCodesUsed.add(String(p).trim());
+          });
+        });
+
+        function isMasterKeyIndex(ki){
+          const key = keys[ki];
+          if (!key || !key.code) return false;
+          const code    = String(key.code || '').trim();
+          const parents = codeParentMap.get(code) || [];
+          if (!parents.length) return false;      // GMK has no parents
+          return parentCodesUsed.has(code);       // MK / GMK (as parent of something)
+        }
+
+        function isChangeKeyIndex(ki){
+          const key = keys[ki];
+          if (!key || !key.code) return false;
+          const code    = String(key.code || '').trim();
+          const parents = codeParentMap.get(code) || [];
+          if (!parents.length) return false;      // GMK or stray
+          return !parentCodesUsed.has(code);      // CK (has parents but is never a parent)
+        }
+
+        function openKDModal(){
+          if (!editing) return;   // KD only in edit mode
+
+          const modal          = document.getElementById('kdModal');
+          if (!modal) return;
+
+          const back           = document.getElementById('kdBackdrop');
+          const btnApply       = document.getElementById('kdApply');
+          const btnCancelModal = document.getElementById('kdCancel');
+
+          const keyStartField  = document.getElementById('kdKeyStartField');
+          const doorStartField = document.getElementById('kdDoorStartField');
+          const keyEndField    = document.getElementById('kdKeyEndField');
+          const doorEndBox     = document.getElementById('kdDoorEndPreview');
+
+          const pickerOverlay  = document.getElementById('kdPickerOverlay');
+          const pickerBackdrop = document.getElementById('kdPickerBackdrop');
+          const pickerTitle    = document.getElementById('kdPickerTitle');
+          const pickerList     = document.getElementById('kdPickerList');
+          const pickerCancel   = document.getElementById('kdPickerCancel');
+
+          if (!keyStartField || !doorStartField || !keyEndField || !doorEndBox ||
+              !pickerOverlay || !pickerList || !pickerTitle) return;
+
+          let selKeyStart  = -1;
+          let selDoorStart = -1;
+          let selKeyEnd    = -1;
+
+          keyStartField.textContent  = 'Tap to select';
+          doorStartField.textContent = 'Tap to select';
+          keyEndField.textContent    = 'Tap to select';
+          doorEndBox.textContent     = '';
+
+          function closePicker(){
+            pickerOverlay.hidden = true;
+            pickerList.innerHTML = '';
+          }
+
+          function closeKD(){
+            modal.hidden = true;
+            closePicker();
+            if (btnApply)       btnApply.onclick = null;
+            if (btnCancelModal) btnCancelModal.onclick = null;
+            if (back)           back.onclick = null;
+            if (pickerCancel)   pickerCancel.onclick = null;
+            if (pickerBackdrop) pickerBackdrop.onclick = null;
+          }
+
+          // Build ordered list of change-key indices between the two picks
+          function buildChangeKeyRange(){
+            if (selKeyStart < 0 || selKeyEnd < 0) return null;
+            const from = selKeyStart;
+            const to   = selKeyEnd;
+            if (to < from) return null;
+            const indices = [];
+            for (let ki = from; ki <= to; ki++){
+              if (isChangeKeyIndex(ki)) indices.push(ki);
+            }
+            return indices;
+          }
+
+          function updateDoorEndPreview(){
+            if (selKeyStart < 0 || selDoorStart < 0 || selKeyEnd < 0){
+              doorEndBox.textContent = 'Select key start, door start and key end.';
+              return;
+            }
+            if (selKeyEnd < selKeyStart){
+              doorEndBox.textContent = 'Key end must be after key start.';
+              return;
+            }
+
+            const changeIndices = buildChangeKeyRange();
+            if (!changeIndices || !changeIndices.length){
+              doorEndBox.textContent = 'No change keys in selected range.';
+              return;
+            }
+
+            const steps = changeIndices.length - 1;
+            const de    = selDoorStart + steps;
+            if (de < 0 || de >= doors.length){
+              doorEndBox.textContent = 'Not enough doors in the system to complete keying';
+              return;
+            }
+
+            const door  = doors[de];
+            const stamp = String(door.stamping || '').trim() || ('Door ' + (de + 1));
+            const desc  = String(door.description || '').trim();
+            doorEndBox.textContent = stamp + (desc ? (' – ' + desc) : '');
+          }
+
+          function openKeyPicker(mode){
+            pickerTitle.textContent = (mode === 'start') ? 'Select key start' : 'Select key end';
+
+            let html = '<div style="display:flex;flex-direction:column;gap:6px;">';
+            keys.forEach((k, ki)=>{
+              if (!isChangeKeyIndex(ki)) return;  // only change keys in pickers
+              const stamp = String(k.stamping || '').trim() || '(no stamp)';
+              const code  = String(k.code || '').trim();
+              const checked =
+                (mode === 'start' && ki === selKeyStart) ||
+                (mode === 'end'   && ki === selKeyEnd);
+              html += (
+                '<label style="display:flex;align-items:center;gap:8px;">' +
+                  '<input type="radio" name="kdKeyPick" value="' + ki + '"' + (checked ? ' checked' : '') + '>' +
+                  '<span><strong>' + stamp + '</strong>' + (code ? (' – ' + code) : '') + '</span>' +
+                '</label>'
+              );
+            });
+            html += '</div>';
+
+            pickerList.innerHTML   = html;
+            pickerOverlay.hidden   = false;
+
+            const radios = pickerList.querySelectorAll('input[name="kdKeyPick"]');
+            radios.forEach(r=>{
+              r.onchange = ()=>{
+                const ki  = Number(r.value);
+                const key = keys[ki];
+                if (!key) return;
+                const stamp = String(key.stamping || '').trim() || '(no stamp)';
+
+                if (mode === 'start'){
+                  selKeyStart = ki;
+                  keyStartField.textContent = stamp;
+                } else {
+                  selKeyEnd = ki;
+                  keyEndField.textContent = stamp;
+                }
+
+                closePicker();
+                updateDoorEndPreview();
+              };
+            });
+          }
+
+          function openDoorPicker(){
+            pickerTitle.textContent = 'Select door start';
+
+            let html = '<div style="display:flex;flex-direction:column;gap:6px;">';
+            doors.forEach((d, di)=>{
+              const stamp = String(d.stamping || '').trim() || ('Door ' + (di + 1));
+              const desc  = String(d.description || '').trim();
+              const checked = (di === selDoorStart);
+              html += (
+                '<label style="display:flex;align-items:center;gap:8px;">' +
+                  '<input type="radio" name="kdDoorPick" value="' + di + '"' + (checked ? ' checked' : '') + '>' +
+                  '<span><strong>' + stamp + '</strong>' + (desc ? (' – ' + desc) : '') + '</span>' +
+                '</label>'
+              );
+            });
+            html += '</div>';
+
+            pickerList.innerHTML = html;
+            pickerOverlay.hidden = false;
+
+            const radios = pickerList.querySelectorAll('input[name="kdDoorPick"]');
+            radios.forEach(r=>{
+              r.onchange = ()=>{
+                const di = Number(r.value);
+                const d  = doors[di];
+                if (!d) return;
+                const stamp = String(d.stamping || '').trim() || ('Door ' + (di + 1));
+
+                selDoorStart = di;
+                doorStartField.textContent = stamp;
+
+                closePicker();
+                updateDoorEndPreview();
+              };
+            });
+          }
+
+          keyStartField.onclick = ()=>{
+            openKeyPicker('start');
+          };
+          doorStartField.onclick = ()=>{
+            openDoorPicker();
+          };
+          keyEndField.onclick = ()=>{
+            openKeyPicker('end');
+          };
+
+          if (pickerCancel){
+            pickerCancel.onclick = closePicker;
+          }
+          if (pickerBackdrop){
+            pickerBackdrop.onclick = closePicker;
+          }
+
+          if (btnCancelModal){
+            btnCancelModal.onclick = closeKD;
+          }
+          if (back){
+            back.onclick = closeKD;
+          }
+
+          if (btnApply){
+            btnApply.onclick = ()=>{
+              if (selKeyStart < 0 || selDoorStart < 0 || selKeyEnd < 0){
+                closeKD();
+                showMessage('Select key start, door start and key end for KD.');
+                return;
+              }
+              if (selKeyEnd < selKeyStart){
+                closeKD();
+                showMessage('Key end must be after key start.');
+                return;
+              }
+
+              const changeIndices = buildChangeKeyRange();
+              if (!changeIndices || !changeIndices.length){
+                closeKD();
+                showMessage('No change keys in selected range.');
+                return;
+              }
+
+              const steps     = changeIndices.length - 1;
+              const endDoorIx = selDoorStart + steps;
+              if (endDoorIx < 0 || endDoorIx >= doors.length){
+                closeKD();
+                showMessage('Not enough doors in the system to complete keying');
+                return;
+              }
+
+              // Walk diagonally over change keys only
+              for (let offset = 0; offset < changeIndices.length; offset++){
+                const ki = changeIndices[offset];
+                const di = selDoorStart + offset;
+                if (di < 0 || di >= doors.length) continue;
+
+                const key = keys[ki];
+                if (!key || !key.code) continue;
+
+                const code    = String(key.code || '').trim();
+                const parents = codeParentMap.get(code);
+                if (!parents || !parents.length) continue;   // only change keys (have parents)
+
+                // Tick the change key cell
+                const sel = 'input.kgCB[data-di="' + di + '"][data-ki="' + ki + '"]';
+                const cb  = content.querySelector(sel);
+                if (cb){
+                  cb.checked = true;
+                }
+
+                // Tick the key above (MK / GMK) for this door
+                parents.forEach(parentCode=>{
+                  if (!parentCode) return;
+                  const parentIdx = keys.findIndex(k =>
+                    String(k.code || '').trim() === String(parentCode).trim()
+                  );
+                  if (parentIdx < 0) return;
+                  const selParent = 'input.kgCB[data-di="' + di + '"][data-ki="' + parentIdx + '"]';
+                  const cbParent  = content.querySelector(selParent);
+                  if (cbParent){
+                    cbParent.checked = true;
+                  }
+                });
+              }
+
+              closeKD();
+            };
+          }
+
+
+          modal.hidden = false;
+        }
+
+
+        if (btnKD){
+          btnKD.onclick = ()=>{
+            if (!editing) return;   // only when Edit mode is active
+            openKDModal();
+          };
+        }
+
+
 
         if (btnAddAbove) {
           btnAddAbove.style.display = 'none';
@@ -2774,6 +3169,9 @@ ${pad(beforeLine2,22)}${afterLine2}`;
               addAboveMode = true;                 // default ON when entering edit
               btnAddAbove.classList.add('active'); // highlight like other tabbtns
             }
+            if (btnKD){
+              btnKD.style.display = 'inline-block';
+            }
           } else {
             // SAVE CHANGES
 
@@ -2812,6 +3210,9 @@ ${pad(beforeLine2,22)}${afterLine2}`;
               btnAddAbove.style.display = 'none';
               btnAddAbove.disabled = true;
             }
+            if (btnKD){
+              btnKD.style.display = 'none';
+            }
 
             // rebuild grid in view mode
             renderKeyingGrid(); // reload clean
@@ -2825,6 +3226,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           }
 
         };
+
 
 
 
@@ -3483,7 +3885,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           // CODE USAGE
           //
           const codeHeader = document.createElement('div');
-          codeHeader.textContent = 'Code Usage';
+          codeHeader.textContent = 'Code Usage (excluding errors)';
           codeHeader.className = 'muted';
           codeHeader.style.marginTop = '12px';
           codeHeader.style.marginBottom = '4px';
@@ -3508,7 +3910,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           codeTable.appendChild(codeColgroup);
 
           const codeHeadRow = document.createElement('tr');
-          ['Code Label','Quantity'].forEach(txt=>{
+          ['Code Status','Quantity'].forEach(txt=>{
             const th = document.createElement('th');
             th.textContent = txt;
             th.style.textAlign = 'left';
@@ -3532,9 +3934,9 @@ ${pad(beforeLine2,22)}${afterLine2}`;
             codeTable.appendChild(tr);
           };
 
-          addCodeRow('Total Good Codes',      goodCodes);
-          addCodeRow('Used Codes',      usedCodes);
-          addCodeRow('Remaining Codes', remainingCodes);
+          addCodeRow('Assigned (Used)',        usedCodes);
+          addCodeRow('Unassigned (Free)',      remainingCodes);
+
 
           codeHost.appendChild(codeTable);
 
@@ -4840,7 +5242,7 @@ function showExpandPreview(){
         html += '<div class="card" style="padding:12px;margin:12px 0;">';
         html += '  <div style="max-height:52vh;overflow:auto;">';
         html += '    <div class="keygrid">';
-        html += '      <div class="hdr muted">Stamping</div>';
+        html += '      <div class="hdr muted" id="keyHeaderSelect">Stamping</div>';
         html += '      <div class="hdr muted">Description</div>';
         html += '      <div class="hdr muted">Code</div>';
         html += '      <div class="hdr muted">Qty</div>';
@@ -4915,6 +5317,17 @@ function showExpandPreview(){
           const rowsHost = document.getElementById('keyRows');
           if (!rowsHost) return;
 
+          const headerEl = document.getElementById('keyHeaderSelect');
+          const headerSelected = (selectedIdx === -1);
+
+          if (headerEl){
+            if (headerSelected){
+              headerEl.classList.add('selected');
+            } else {
+              headerEl.classList.remove('selected');
+            }
+          }
+
           rowsHost.querySelectorAll('.keyrow').forEach((btn)=>{
             const idx = parseInt(btn.dataset.idx, 10);
             if (idx === selectedIdx){
@@ -4933,6 +5346,7 @@ function showExpandPreview(){
           document.getElementById('keyCut').disabled    = !hasSelection;
           document.getElementById('keyDelete').disabled = !hasSelection;
         }
+
 
 
         syncSelection();
@@ -4957,6 +5371,16 @@ function showExpandPreview(){
           });
         });
 
+        const keyHeaderEl = document.getElementById('keyHeaderSelect');
+        if (keyHeaderEl){
+          keyHeaderEl.addEventListener('click', ()=>{
+            selectedIdx = -1;
+            _keysSelectedIdx = -1;
+            syncSelection();
+          });
+        }
+
+
 
         const fb = document.getElementById('keyFastBuild');
         if (fb){
@@ -4971,6 +5395,7 @@ function showExpandPreview(){
 
         document.getElementById('keyAdd').onclick = ()=>{
           ensureKeysArray();
+          _editingKeyIndex = null;
 
           let baseStamp = '';
           if (_keysSelectedIdx >= 0 && _currentSystem && Array.isArray(_currentSystem.keys) && _currentSystem.keys[_keysSelectedIdx]) {
@@ -4982,6 +5407,7 @@ function showExpandPreview(){
           const nextStamp = getNextStamping(baseStamp);
           openKeyModal({ stamping: nextStamp, description:'', code:'', qty:0 });
         };
+
 
         document.getElementById('keyEdit').onclick = ()=>{
           if (selectedIdx < 0) return;
@@ -5228,10 +5654,15 @@ function showExpandPreview(){
       };
       let savedIdx = null;
       if (_editingDoorIndex == null){
-        // insert after currently selected door; if none, append
-        const insertAt = (_doorsSelectedIdx >= 0 && _doorsSelectedIdx < _currentSystem.doors.length)
-          ? (_doorsSelectedIdx + 1)
-          : _currentSystem.doors.length;
+        // insert after currently selected door; if header is selected (-1), insert at top
+        let insertAt;
+        if (_doorsSelectedIdx === -1){
+          insertAt = 0;
+        } else if (_doorsSelectedIdx >= 0 && _doorsSelectedIdx < _currentSystem.doors.length){
+          insertAt = _doorsSelectedIdx + 1;
+        } else {
+          insertAt = _currentSystem.doors.length;
+        }
         _currentSystem.doors.splice(insertAt, 0, obj);
         savedIdx = insertAt;
       } else {
@@ -5730,7 +6161,7 @@ function showExpandPreview(){
        html += '<div class="card" style="padding:12px;margin:12px 0;">';
        html += '  <div style="max-height:52vh;overflow:auto;">';
        html += '    <div class="doorgrid">';
-       html += '      <div class="hdr muted">Stamping</div>';
+       html += '      <div class="hdr muted" id="doorHeaderSelect">Stamping</div>';
        html += '      <div class="hdr muted">Description</div>';
        html += '      <div class="hdr muted">Part Number</div>';
        html += '    </div>';
@@ -5808,9 +6239,20 @@ function showExpandPreview(){
         const btnDelete  = document.getElementById('doorDelete');
 
         function applyDoorSelection(){
+          const headerEl       = document.getElementById('doorHeaderSelect');
+          const headerSelected = (selectedIdx === -1);
+
+          if (headerEl){
+            if (headerSelected){
+              headerEl.classList.add('selected');
+            } else {
+              headerEl.classList.remove('selected');
+            }
+          }
+
           const hasSelection =
+            selectedIdx != null &&
             selectedIdx >= 0 &&
-            selectedIdx < rows.length &&
             visibleIdxSet.has(selectedIdx);
 
           btnEdit.disabled    = !hasSelection;
@@ -5825,6 +6267,7 @@ function showExpandPreview(){
           });
         }
 
+
         rowEls.forEach((el)=>{
           el.onclick = ()=>{
             selectedIdx = parseInt(el.getAttribute('data-idx'), 10);
@@ -5832,6 +6275,16 @@ function showExpandPreview(){
             applyDoorSelection();
           };
         });
+
+        const doorHeaderEl = document.getElementById('doorHeaderSelect');
+        if (doorHeaderEl){
+          doorHeaderEl.onclick = ()=>{
+            selectedIdx = -1;
+            _doorsSelectedIdx = -1;
+            applyDoorSelection();
+          };
+        }
+
 
         // NEW: when we render Doors, jump back to the last-selected row
         (function(){
@@ -6136,10 +6589,15 @@ function showExpandPreview(){
       const obj = { stamping, description: desc, code, qty: (_editingKeyIndex!=null && _currentSystem.keys[_editingKeyIndex]) ? (_currentSystem.keys[_editingKeyIndex].qty||0) : 0 };
 
       if (_editingKeyIndex == null){
-        // insert after currently selected key; if none, append
-        const insertAt = (_keysSelectedIdx >= 0 && _keysSelectedIdx < _currentSystem.keys.length)
-          ? (_keysSelectedIdx + 1)
-          : _currentSystem.keys.length;
+        // insert after currently selected key; if header is selected (-1), insert at top
+        let insertAt;
+        if (_keysSelectedIdx === -1){
+          insertAt = 0;
+        } else if (_keysSelectedIdx >= 0 && _keysSelectedIdx < _currentSystem.keys.length){
+          insertAt = _keysSelectedIdx + 1;
+        } else {
+          insertAt = _currentSystem.keys.length;
+        }
         _currentSystem.keys.splice(insertAt, 0, obj);
         _keysSelectedIdx = insertAt;   // keep the new key selected
       } else {
