@@ -806,34 +806,43 @@
      </div>
    </div>
 
-   <!-- Key Editor Modal -->
-   <div id="keyModal" class="modal" hidden>
-    <div class="backdrop" id="keyBackdrop"></div>
-    <div class="dialog">
-      <h3>Add / Edit Key</h3>
-      <div class="row">
-        <div>
-          <label for="keyStamping">Key Stamping</label>
-          <input id="keyStamping" type="text" placeholder="e.g. G01">
+      <!-- Key Editor Modal -->
+      <div id="keyModal" class="modal" hidden>
+        <div class="backdrop" id="keyBackdrop"></div>
+        <div class="dialog">
+          <h3>Add / Edit Key</h3>
+          <div class="row">
+            <div>
+              <label for="keyStamping">Key Stamping</label>
+              <input id="keyStamping" type="text" placeholder="e.g. G01">
+            </div>
+            <div>
+              <label for="keyDesc">Key Description</label>
+              <input id="keyDesc" type="text" placeholder="e.g. Front Door Key">
+            </div>
+          </div>
+        <div class="row" style="margin-top:10px;">
+          <div>
+            <label for="keyCodeDisplay">Assigned Code</label>
+            <input id="keyCodeDisplay" type="text" placeholder="No Code Assigned" readonly>
+          </div>
+          <div>
+            <label for="keyColourField" style="font-size:13px;">Key Colour</label>
+            <input
+              id="keyColourField"
+              type="text"
+              readonly
+              placeholder="Tap to select">
+          </div>
         </div>
-        <div>
-          <label for="keyDesc">Key Description</label>
-          <input id="keyDesc" type="text" placeholder="e.g. Front Door Key">
+          <div class="btnbar" style="justify-content:flex-end">
+            <button id="keyCancel">Cancel</button>
+            <button id="keyAssignOpen">Assign Code</button>
+            <button class="primary" id="keySave">Save</button>
+          </div>
         </div>
       </div>
-      <div class="row" style="margin-top:10px;">
-        <div>
-          <label for="keyCodeDisplay">Assigned Code</label>
-          <input id="keyCodeDisplay" type="text" placeholder="No Code Assigned" readonly>
-        </div>
-      </div>
-      <div class="btnbar" style="justify-content:flex-end">
-        <button id="keyCancel">Cancel</button>
-        <button id="keyAssignOpen">Assign Code</button>
-        <button class="primary" id="keySave">Save</button>
-      </div>
-    </div>
-  </div>
+
   
  <!-- Key Search Modal -->
   <div id="keySearchModal" class="modal" hidden>
@@ -866,25 +875,43 @@
     </div>
   </div>
 
-  <!-- Assign Code Modal -->
-  <div id="assignModal" class="modal" hidden>
-    <div class="backdrop" id="assignBackdrop"></div>
-    <div class="dialog">
-      <h3>Assign Code</h3>
-      <div id="assignTree"
-           class="out"
-           style="max-height:50vh; overflow:auto; margin-top:8px;"></div>
-       <div class="btnbar" style="justify-content:flex-end">
-         <button id="assignCancel">Cancel</button>
-         <button id="assignManual">✏️</button>
-         <button id="assignToggleErr">Show Errors</button>
-         <button class="primary" id="assignOk">Assign</button>
-       </div>
-     </div>
-   </div>
-   
-   <!-- Manual Code Modal -->
-   <div id="manualCodeModal" class="modal" hidden>
+    <!-- Assign Code Modal -->
+    <div id="assignModal" class="modal" hidden>
+      <div class="backdrop" id="assignBackdrop"></div>
+      <div class="dialog">
+        <h3>Assign Code</h3>
+        <p class="muted" style="margin:6px 0 12px 0;">
+          Select from available codes below. Codes already assigned to other keys are excluded.
+        </p>
+        <div id="assignListBox"
+             class="out"
+             style="max-height:50vh;overflow:auto;margin-top:8px;"></div>
+        <div class="btnbar" style="justify-content:flex-end;margin-top:12px;">
+          <button id="assignCancel">Cancel</button>
+          <button id="assignManual" title="Enter a code manually">✏️</button>
+          <button id="assignToggleErr">Show Errors</button>
+          <button class="primary" id="assignOk">Assign</button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Key Colour Modal -->
+    <div id="keyColourModal" class="modal" hidden>
+      <div class="backdrop" id="keyColourBackdrop"></div>
+      <div class="dialog">
+        <h3>Select Key Colour</h3>
+        <div id="keyColourList" class="out" style="max-height:50vh;overflow:auto;margin-top:8px;"></div>
+        <div class="btnbar" style="justify-content:flex-end;margin-top:12px;">
+          <button id="keyColourCancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- Manual Code Modal -->
+    <div id="manualCodeModal" class="modal" hidden>
      <div class="backdrop" id="manualCodeBackdrop"></div>
      <div class="dialog">
        <h3>Manual Code</h3>
@@ -1041,7 +1068,10 @@
       <div class="row" style="margin-top:10px;">
         <div>
           <label for="doorPart">Part Number</label>
-          <input id="doorPart" type="text" placeholder="e.g. 570/201">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input id="doorPart" type="text" placeholder="e.g. 570/201" style="flex:1 1 auto;">
+          <button id="doorPartDrop" type="button" style="padding:10px 10px;font-size:16px;line-height:1;border-radius:12px;">▾</button>
+          </div>
         </div>
         <div>
           <label for="doorNotes">Notes</label>
@@ -1052,6 +1082,20 @@
         <button id="doorAddAnother">Add Another</button>
         <button id="doorCancel">Cancel</button>
         <button class="primary" id="doorSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Door Part Picker Modal -->
+  <div id="doorPartModal" class="modal" hidden>
+    <div class="backdrop" id="doorPartBackdrop"></div>
+    <div class="dialog">
+      <h3>Select Part Number</h3>
+      <div id="doorPartList"
+           class="out"
+           style="max-height:50vh;overflow:auto;margin-top:8px;"></div>
+      <div class="btnbar" style="justify-content:flex-end">
+        <button id="doorPartCancel">Cancel</button>
       </div>
     </div>
   </div>
@@ -4974,9 +5018,34 @@ function showExpandPreview(){
 
 
     
-     // ---- Keys view (grid + CRUD) ----
-     let _editingKeyIndex = null;
-     let _assignSelectedCode = '';
+      // ---- Keys view (grid + CRUD) ----
+      let _editingKeyIndex = null;
+      let _assignSelectedCode = '';
+      let _keysShowColour    = false;
+
+      const KEY_COLOUR_OPTIONS = [
+        // Standard colours
+        'Black',
+        'Blue',
+        'Brown',
+        'Green',
+        'Orange',
+        'Red',
+        'Violet',
+        'Yellow',
+
+        // Light colours
+        'Light Blue',
+        'Light Green',
+        'Light Red',
+
+        // Fluro colours
+        'Fluro Green',
+        'Fluro Pink',
+        'Fluro Yellow'
+      ];
+
+
 
      function persistCurrentSystem(){
        if (!_currentSystem) return;
@@ -5238,18 +5307,21 @@ function showExpandPreview(){
 
         let html = '';
 
+        const codeHeaderLabel = _keysShowColour ? 'Colour' : 'Code';
+
         // BOX 1: scrollable keys window (own card, like the top content card)
         html += '<div class="card" style="padding:12px;margin:12px 0;">';
         html += '  <div style="max-height:52vh;overflow:auto;">';
         html += '    <div class="keygrid">';
         html += '      <div class="hdr muted" id="keyHeaderSelect">Stamping</div>';
         html += '      <div class="hdr muted">Description</div>';
-        html += '      <div class="hdr muted">Code</div>';
+        html += '      <div class="hdr muted" id="keyHeaderCode">'+codeHeaderLabel+'</div>';
         html += '      <div class="hdr muted">Qty</div>';
         html += '    </div>';
         html += '    <div id="keyRows" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>';
         html += '  </div>';
         html += '</div>';
+
 
         const searchState = _keySearch || { stamping:'', desc:'', hasCut:'any' };
         const hasKeyFilter =
@@ -5299,11 +5371,12 @@ function showExpandPreview(){
         rowsHost.innerHTML = rows.map((k, idx) => {
           if (!matchKeySearch(k)) return '';
           visibleIdx.push(idx);
+          const displayValue = _keysShowColour ? (k.colour || '') : (k.code || '');
           return (
             '<button type="button" class="keyrow" data-idx="'+idx+'">' +
               '<div class="keycell">'+(k.stamping||'')+'</div>' +
               '<div class="keycell">'+(k.description||'')+'</div>' +
-              '<div class="keycell">'+(k.code||'')+'</div>' +
+              '<div class="keycell">'+displayValue+'</div>' +
               '<div class="keycell qty">'+((k.qty!=null?k.qty:'')||'')+'</div>' +
             '</button>'
           );
@@ -5377,6 +5450,14 @@ function showExpandPreview(){
             selectedIdx = -1;
             _keysSelectedIdx = -1;
             syncSelection();
+          });
+        }
+
+        const keyCodeHeaderEl = document.getElementById('keyHeaderCode');
+        if (keyCodeHeaderEl){
+          keyCodeHeaderEl.addEventListener('click', ()=>{
+            _keysShowColour = !_keysShowColour;
+            renderKeysView();
           });
         }
 
@@ -5526,7 +5607,7 @@ function showExpandPreview(){
 
     function ensureDoorsArray(){
       if (!_currentSystem.doors) _currentSystem.doors = [];
-      // door shape: { stamping, description, part, notes, keys: [keyStamping,...] }
+      // door shape: { stamping, description, part, notes, keys: [keyStamping,] }
     }
 
     function openDoorModal(model){
@@ -5538,6 +5619,60 @@ function showExpandPreview(){
       m.hidden = false;
     }
     function closeDoorModal(){ document.getElementById('doorModal').hidden = true; }
+
+    // --- Door Part Picker (Part Number history) ---
+    function collectDoorParts(){
+      if (!_currentSystem) return [];
+      ensureDoorsArray();
+      const seen  = new Set();
+      const parts = [];
+      _currentSystem.doors.forEach((d)=>{
+        if (!d) return;
+        const raw = (d.part || '').trim();
+        if (!raw) return;
+        if (seen.has(raw)) return;
+        seen.add(raw);
+        parts.push(raw);
+      });
+      parts.sort((a,b)=>a.localeCompare(b, undefined, {numeric:true,sensitivity:'base'}));
+      return parts;
+    }
+
+    function openDoorPartModal(){
+      const modal = document.getElementById('doorPartModal');
+      const list  = document.getElementById('doorPartList');
+      const input = document.getElementById('doorPart');
+      if (!modal || !list || !input) return;
+
+      const parts = collectDoorParts();
+      if (!parts.length){
+        list.innerHTML = '<div class="muted">No part numbers in this system yet.</div>';
+      } else {
+        let html = '<div style="display:flex;flex-direction:column;gap:6px;">';
+        for (const p of parts){
+          const label = p.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          html += '<button type="button" data-part="' + label + '" style="width:100%;text-align:left;padding:8px 10px;border:1px solid #1e1e1e;border-radius:10px;background:var(--field-bg);">' + label + '</button>';
+        }
+        html += '</div>';
+        list.innerHTML = html;
+
+        const btns = list.querySelectorAll('button[data-part]');
+        btns.forEach((btn)=>{
+          btn.onclick = ()=>{
+            const val = btn.getAttribute('data-part') || '';
+            input.value = val;
+            closeDoorPartModal();
+          };
+        });
+      }
+
+      modal.hidden = false;
+    }
+
+    function closeDoorPartModal(){
+      const modal = document.getElementById('doorPartModal');
+      if (modal) modal.hidden = true;
+    }
 
     // --- Door Search Modal helpers ---
     function openDoorSearchModal(){
@@ -5602,6 +5737,20 @@ function showExpandPreview(){
     // Door modal buttons
     document.getElementById('doorBackdrop').onclick = closeDoorModal;
     document.getElementById('doorCancel').onclick   = closeDoorModal;
+
+    const doorPartDrop      = document.getElementById('doorPartDrop');
+    const doorPartBackdrop  = document.getElementById('doorPartBackdrop');
+    const doorPartCancel    = document.getElementById('doorPartCancel');
+
+    if (doorPartDrop){
+      doorPartDrop.onclick = openDoorPartModal;
+    }
+    if (doorPartBackdrop){
+      doorPartBackdrop.onclick = closeDoorPartModal;
+    }
+    if (doorPartCancel){
+      doorPartCancel.onclick = closeDoorPartModal;
+    }
 
     // Door Search modal buttons
     (function(){
@@ -6457,14 +6606,20 @@ function showExpandPreview(){
       }
 
     // --- Key Editor Modal helpers ---
-    function openKeyModal(model){
-      const m = document.getElementById('keyModal');
-      document.getElementById('keyStamping').value    = model.stamping || '';
-      document.getElementById('keyDesc').value        = model.description || '';
-      document.getElementById('keyCodeDisplay').value = model.code || '';
-      _assignSelectedCode = model.code || '';
-      m.hidden = false;
-    }
+      function openKeyModal(model){
+        const m = document.getElementById('keyModal');
+        const colourBtn = document.getElementById('keyColourField');
+        document.getElementById('keyStamping').value    = model.stamping || '';
+        document.getElementById('keyDesc').value        = model.description || '';
+        document.getElementById('keyCodeDisplay').value = model.code || '';
+        _assignSelectedCode = model.code || '';
+        if (colourBtn){
+          const c = model.colour || '';
+          colourBtn.dataset.value = c;
+          colourBtn.value         = c || '';
+        }
+        m.hidden = false;
+      }
     function closeKeyModal(){
       document.getElementById('keyModal').hidden = true;
     }
@@ -6570,6 +6725,8 @@ function showExpandPreview(){
       const stamping = (document.getElementById('keyStamping').value || '').trim();
       const desc     = (document.getElementById('keyDesc').value || '').trim();
       const code     = (document.getElementById('keyCodeDisplay').value || '').trim();
+      const colourEl = document.getElementById('keyColourField');
+      const colour   = colourEl ? ((colourEl.dataset.value || '').trim()) : '';
 
       // prevent duplicate stampings within this system
       if (stamping) {
@@ -6586,35 +6743,88 @@ function showExpandPreview(){
         }
       }
 
-      const obj = { stamping, description: desc, code, qty: (_editingKeyIndex!=null && _currentSystem.keys[_editingKeyIndex]) ? (_currentSystem.keys[_editingKeyIndex].qty||0) : 0 };
+      const obj = {
+        stamping,
+        description: desc,
+        code,
+        colour,
+        qty: (_editingKeyIndex!=null && _currentSystem.keys[_editingKeyIndex])
+          ? (_currentSystem.keys[_editingKeyIndex].qty||0)
+          : 0
+      };
 
       if (_editingKeyIndex == null){
         // insert after currently selected key; if header is selected (-1), insert at top
         let insertAt;
         if (_keysSelectedIdx === -1){
           insertAt = 0;
-        } else if (_keysSelectedIdx >= 0 && _keysSelectedIdx < _currentSystem.keys.length){
+        } else if (_keysSelectedIdx != null && _keysSelectedIdx >= 0){
           insertAt = _keysSelectedIdx + 1;
         } else {
           insertAt = _currentSystem.keys.length;
         }
         _currentSystem.keys.splice(insertAt, 0, obj);
-        _keysSelectedIdx = insertAt;   // keep the new key selected
+        _keysSelectedIdx = insertAt;
       } else {
         _currentSystem.keys[_editingKeyIndex] = obj;
-        _keysSelectedIdx = _editingKeyIndex;  // keep edited key selected
+        _keysSelectedIdx = _editingKeyIndex;
       }
+
       persistCurrentSystem();
-      closeKeyModal();
       renderKeysView();
+      closeKeyModal();
     };
+
+      const keyColourBtn      = document.getElementById('keyColourField');
+      const keyColourModal    = document.getElementById('keyColourModal');
+      const keyColourBackdrop = document.getElementById('keyColourBackdrop');
+      const keyColourList     = document.getElementById('keyColourList');
+      const keyColourCancel   = document.getElementById('keyColourCancel');
+
+        if (keyColourBtn && keyColourModal && keyColourBackdrop && keyColourList && keyColourCancel){
+          function closeKeyColourModal(){
+            keyColourModal.hidden = true;
+            keyColourBackdrop.onclick = null;
+            keyColourCancel.onclick   = null;
+            keyColourList.innerHTML   = '';
+          }
+
+          function openKeyColourModal(){
+            const current = keyColourBtn.dataset.value || '';
+            let html = '<div style="display:flex;flex-direction:column;gap:6px;">';
+            KEY_COLOUR_OPTIONS.forEach((col)=>{
+              const sel = (col === current) ? ' selected' : '';
+              html += '<button type="button" class="keyColourRow'+sel+'" data-colour="'+col+'" style="width:100%;text-align:left;padding:8px 10px;border:1px solid #1e1e1e;border-radius:10px;background:var(--field-bg);cursor:pointer;">'+col+'</button>';
+            });
+            html += '</div>';
+            keyColourList.innerHTML = html;
+
+            Array.from(keyColourList.querySelectorAll('.keyColourRow')).forEach((btn)=>{
+              btn.onclick = ()=>{
+                const c = btn.getAttribute('data-colour') || '';
+                keyColourBtn.dataset.value = c;
+                keyColourBtn.value         = c || '';
+                closeKeyColourModal();
+              };
+            });
+
+            keyColourBackdrop.onclick = closeKeyColourModal;
+            keyColourCancel.onclick   = closeKeyColourModal;
+            keyColourModal.hidden     = false;
+          }
+
+          keyColourBtn.onclick = openKeyColourModal;
+        }
+
+
 
 
 
     // --- Assign Code Modal ---
     function openAssignModal(){
-      const box = document.getElementById('assignTree');
+      const box = document.getElementById('assignListBox');
       const lines = (_currentSystem && _currentSystem.lines) ? _currentSystem.lines.slice() : [];
+
 
       // Build clickable list (type + error flag)
       const items = [];
