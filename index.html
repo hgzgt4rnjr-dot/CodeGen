@@ -4453,107 +4453,142 @@ ${pad(beforeLine2,22)}${afterLine2}`;
           }
         }
 
-        async function saveReportAsPdf(){
-          if (!content){
-            fallbackPrint('No report content to export.');
-            return;
-          }
-          if (typeof html2canvas !== 'function' || !window.jspdf || !window.jspdf.jsPDF){
-            fallbackPrint('PDF helpers (html2canvas / jsPDF) are not available offline.');
-            return;
-          }
-          try{
-            const canvas = await html2canvas(content, {
-              backgroundColor: '#ffffff',
-              scale: 2,
-              useCORS: true
-            });
+       async function saveReportAsPdf(){
+         try {
+           const previewBody = document.getElementById('reportPreviewBody');
+           if (!previewBody){
+             alert('Nothing to export.');
+             return;
+           }
 
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF({
-              orientation: 'portrait',
-              unit: 'pt',
-              format: 'a4'
-            });
+           const { jsPDF } = window.jspdf || {};
+           if (!jsPDF){
+             alert('PDF export not available (jsPDF not loaded).');
+             return;
+           }
 
-            const pageWidth   = pdf.internal.pageSize.getWidth();
-            const pageHeight  = pdf.internal.pageSize.getHeight();
-            const marginX     = 40;
-            const marginY     = 40;
-            const usableWidth = pageWidth  - marginX * 2;
-            const usableHeight= pageHeight - marginY * 2;
+           // Measure the DOM height so we can map table row bottoms → canvas pixels
+           const contentRect = previewBody.getBoundingClientRect();
+           const domHeight   = contentRect.height || 1;
 
-            const imgWidthPx  = canvas.width;
-            const imgHeightPx = canvas.height;
+           // Capture the whole report as one tall canvas
+           const canvas = await html2canvas(previewBody, {
+             scale: 2,
+             useCORS: true,
+             backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg') || '#ffffff',
+             logging: false
+           });
 
-            // Scale so the report fits the page width inside margins
-            const scale       = usableWidth / imgWidthPx;
-            // Height (in canvas px) that fits on one page at that scale
-            const sliceHeightPx = usableHeight / scale;
-            // Approximate line height in canvas pixels so we cut between lines,
-            // not through the middle of them. Tweak if you ever change font/size.
-            const approxLinePx  = 40;
+           const canvasWidth  = canvas.width;
+           const canvasHeight = canvas.height;
 
-            let remainingPx = imgHeightPx;
-            let offsetPx    = 0;
-            let firstPage   = true;
+           // Map DOM pixels → canvas pixels
+           const domToCanvasScale = canvasHeight / domHeight;
 
-            while (remainingPx > 0){
-              const maxSlice = Math.min(sliceHeightPx, remainingPx);
+           // Build a list of row-bottom boundaries in canvas pixels, so we never cut mid-row
+           const rowBottoms = [];
+           const rows = previewBody.querySelectorAll('table tr');
+           rows.forEach(row => {
+             const rect = row.getBoundingClientRect();
+             const bottomDom  = rect.bottom - contentRect.top;   // offset inside previewBody
+             const bottomPx   = Math.round(bottomDom * domToCanvasScale);
+             if (bottomPx > 0 && bottomPx <= canvasHeight){
+               rowBottoms.push(bottomPx);
+             }
+           });
+           rowBottoms.sort((a,b)=>a-b);
 
-              // Round down to the nearest whole "line" so we don't chop a line in half
-              let lines = Math.floor(maxSlice / approxLinePx);
-              if (lines < 1){
-                // If there's less than one line of space, just put whatever is left
-                // on the final page.
-                lines = 1;
-              }
+           // De-duplicate boundaries
+           const boundaries = [];
+           for (let i=0; i<rowBottoms.length; i++){
+             const b = rowBottoms[i];
+             if (!boundaries.length || b > boundaries[boundaries.length - 1]){
+               boundaries.push(b);
+             }
+           }
 
-              let currentSlicePx = lines * approxLinePx;
-              if (currentSlicePx > remainingPx){
-                currentSlicePx = remainingPx;
-              }
+           const pdf = new jsPDF('p', 'pt', 'a4');
+           const pageWidth  = pdf.internal.pageSize.getWidth();
+           const pageHeight = pdf.internal.pageSize.getHeight();
 
-              const sliceCanvas = document.createElement('canvas');
-              sliceCanvas.width  = imgWidthPx;
-              sliceCanvas.height = currentSlicePx;
+           const marginTop    = 20;
+           const marginBottom = 20;
+           const usableHeight = pageHeight - marginTop - marginBottom;
 
-              const ctx = sliceCanvas.getContext('2d');
-              ctx.drawImage(
-                canvas,
-                0, offsetPx,                      // source x,y
-                imgWidthPx, currentSlicePx,       // source w,h
-                0, 0,                             // dest x,y
-                imgWidthPx, currentSlicePx        // dest w,h
-              );
+           // We fit width exactly; height is whatever the slice needs
+           const ratio             = pageWidth / canvasWidth;
+           const maxSliceHeightPx  = Math.floor(usableHeight / ratio);
 
-              const sliceDataUrl = sliceCanvas.toDataURL('image/png');
-              if (!firstPage){
-                pdf.addPage();
-              } else {
-                firstPage = false;
-              }
+           let startPx   = 0;
+           let firstPage = true;
 
-              const renderedHeightPt = currentSlicePx * scale;
-              pdf.addImage(
-                sliceDataUrl,
-                'PNG',
-                marginX,
-                marginY,
-                usableWidth,
-                renderedHeightPt
-              );
+           while (startPx < canvasHeight - 1){
+             // Max end for this page in canvas pixels
+             const maxEnd = Math.min(canvasHeight, startPx + maxSliceHeightPx);
 
-              offsetPx   += currentSlicePx;
-              remainingPx-= currentSlicePx;
-            }
+             // Find the last row boundary between startPx and maxEnd
+             let endPx = maxEnd;
+             for (let i=0; i<boundaries.length; i++){
+               const b = boundaries[i];
+               if (b <= maxEnd && b > startPx + 10){
+                 endPx = b;
+               }
+             }
 
-            pdf.save('CodeGen_Report.pdf');
-          }catch(e){
-            console.error('Save as PDF failed', e);
-            fallbackPrint('Could not generate a PDF for this report.');
-          }
-        }
+             // Safety: if we didn’t move, just use maxEnd to avoid infinite loop
+             if (endPx <= startPx + 10){
+               endPx = maxEnd;
+             }
+
+             const sliceHeightPx = endPx - startPx;
+             if (sliceHeightPx <= 0){
+               break;
+             }
+
+             // Create a slice canvas so jsPDF gets a clean page image
+             const sliceCanvas = document.createElement('canvas');
+             sliceCanvas.width  = canvasWidth;
+             sliceCanvas.height = sliceHeightPx;
+             const sctx = sliceCanvas.getContext('2d');
+
+             // Draw the relevant strip of the full canvas onto the slice
+             sctx.drawImage(canvas, 0, -startPx);
+
+             const imgData      = sliceCanvas.toDataURL('image/png');
+             const renderHeight = sliceHeightPx * ratio;
+
+             if (!firstPage){
+               pdf.addPage();
+             }
+             firstPage = false;
+
+             // Center horizontally, fixed top margin
+             const x = 0;
+             const y = marginTop;
+             pdf.addImage(imgData, 'PNG', x, y, pageWidth, renderHeight);
+
+             startPx = endPx;
+           }
+
+           // Filename with yyyymmdd stamp
+           const now  = new Date();
+           const y    = now.getFullYear();
+           const m    = String(now.getMonth() + 1).padStart(2, '0');
+           const d    = String(now.getDate()).padStart(2, '0');
+           const stamp = `${y}${m}${d}`;
+
+           pdf.save(`CodeGen_Report_${stamp}.pdf`);
+         } catch (err){
+           console.error(err);
+           alert('Download PDF failed – falling back to browser print.\n\n' + (err && err.message ? err.message : err));
+           try {
+             window.print();
+           } catch (e2){
+             console.error(e2);
+           }
+         }
+       }
+
 
 
         if (btnPhoto) btnPhoto.onclick = saveReportAsPng;
