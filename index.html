@@ -469,6 +469,21 @@
     body.theme-commercial #kdPickerList span {
         color: #000000 !important;
     }
+    
+    /* System Reports – force black text in Commercial theme (reports options + lists only) */
+    body.theme-commercial #keyReportModal label,
+    body.theme-commercial #doorReportModal label,
+    body.theme-commercial #keyingReportModal label {
+        color:#000000 !important;
+    }
+
+    body.theme-commercial #keyReportSelectionBlock span,
+    body.theme-commercial #doorReportSelectionBlock span,
+    body.theme-commercial #keyingSelectedKeysBlock span,
+    body.theme-commercial #keyingSelectedDoorsBlock span {
+        color:#000000 !important;
+    }
+
 
 
   </style>
@@ -1353,6 +1368,186 @@
        </div>
      </div>
    </div>
+
+   <!-- System Reports – Key / Door / Keying modals -->
+
+   <!-- Key Report – options -->
+   <div id="keyReportModal" class="modal" hidden>
+     <div class="backdrop" id="keyReportBackdrop"></div>
+     <div class="dialog">
+       <h3>Key Report</h3>
+       <div class="muted" style="font-size:13px;margin-bottom:4px;">Select Information</div>
+       <div class="row" style="flex-wrap:wrap;margin-top:4px;">
+         <div style="flex:1 1 160px;">
+           <label class="inline" style="font-size:14px;">
+             <input id="keyReportColStamping" type="checkbox" checked style="margin-right:6px;">
+             Key Stamping
+           </label>
+           <label class="inline" style="font-size:14px;margin-top:4px;">
+             <input id="keyReportColDescription" type="checkbox" checked style="margin-right:6px;">
+             Key Description
+           </label>
+           <label class="inline" style="font-size:14px;margin-top:4px;">
+             <input id="keyReportColCode" type="checkbox" checked style="margin-right:6px;">
+             Key Code
+           </label>
+         </div>
+         <div style="flex:1 1 160px;">
+           <label class="inline" style="font-size:14px;">
+             <input id="keyReportColColour" type="checkbox" checked style="margin-right:6px;">
+             Key Colour
+           </label>
+           <label class="inline" style="font-size:14px;margin-top:4px;">
+             <input id="keyReportColQty" type="checkbox" checked style="margin-right:6px;">
+             Qty
+           </label>
+         </div>
+       </div>
+
+        <div id="keyReportSelectionBlock" style="margin-top:14px;">
+          <div class="muted" style="font-size:13px;margin-bottom:4px;">Key Selection</div>
+          <div class="btnbar seg" style="justify-content:flex-start;margin-top:4px;">
+            <button id="keyReportScopeAllBtn" class="selected">All Keys</button>
+            <button id="keyReportScopeSelectedBtn">Selected Keys</button>
+          </div>
+          <div id="keyReportList"
+               class="out"
+               style="margin-top:8px;max-height:35vh;overflow:auto;font-size:14px;">
+            <!-- populated by JS when opened -->
+          </div>
+        </div>
+
+       <div class="btnbar" style="justify-content:flex-end;margin-top:16px;">
+         <button id="keyReportCancel">Cancel</button>
+         <button class="primary" id="keyReportGenerate">Generate Report</button>
+       </div>
+     </div>
+   </div>
+
+   <!-- Door Report – options -->
+   <div id="doorReportModal" class="modal" hidden>
+     <div class="backdrop" id="doorReportBackdrop"></div>
+     <div class="dialog">
+       <h3>Door Report</h3>
+       <div class="muted" style="font-size:13px;margin-bottom:4px;">Select Information</div>
+       <div class="row" style="flex-wrap:wrap;margin-top:4px;">
+         <div style="flex:1 1 160px;">
+           <label class="inline" style="font-size:14px;">
+             <input id="doorReportColStamping" type="checkbox" checked style="margin-right:6px;">
+             Door Stamping
+           </label>
+           <label class="inline" style="font-size:14px;margin-top:4px;">
+             <input id="doorReportColDescription" type="checkbox" checked style="margin-right:6px;">
+             Door Description
+           </label>
+         </div>
+         <div style="flex:1 1 160px;">
+           <label class="inline" style="font-size:14px;">
+             <input id="doorReportColPart" type="checkbox" checked style="margin-right:6px;">
+             Part Number
+           </label>
+           <label class="inline" style="font-size:14px;margin-top:4px;">
+             <input id="doorReportColNotes" type="checkbox" checked style="margin-right:6px;">
+             Door Notes
+           </label>
+         </div>
+       </div>
+
+        <div id="doorReportSelectionBlock" style="margin-top:14px;">
+          <div class="muted" style="font-size:13px;margin-bottom:4px;">Door Selection</div>
+          <div class="btnbar seg" style="justify-content:flex-start;margin-top:4px;">
+            <button id="doorReportScopeAllBtn" class="selected">All Doors</button>
+            <button id="doorReportScopeSelectedBtn">Selected Doors</button>
+          </div>
+          <div id="doorReportList"
+               class="out"
+               style="margin-top:8px;max-height:35vh;overflow:auto;font-size:14px;">
+            <!-- populated by JS when opened -->
+          </div>
+        </div>
+
+       <div class="btnbar" style="justify-content:flex-end;margin-top:16px;">
+         <button id="doorReportCancel">Cancel</button>
+         <button class="primary" id="doorReportGenerate">Generate Report</button>
+       </div>
+     </div>
+   </div>
+
+   <!-- Keying Report – options -->
+   <div id="keyingReportModal" class="modal" hidden>
+     <div class="backdrop" id="keyingReportBackdrop"></div>
+     <div class="dialog">
+       <h3>System Keying</h3>
+       <p class="muted" style="margin:4px 0 10px 0;">
+         Choose which keying information to include in the report.
+       </p>
+
+       <div style="margin-top:6px;">
+         <label class="inline" style="font-size:14px;">
+           <input type="radio" name="keyingReportScope" id="keyingScopeAll" value="all" checked style="margin-right:6px;">
+           Keying for all doors and keys
+         </label>
+         <label class="inline" style="font-size:14px;margin-top:4px;">
+           <input type="radio" name="keyingReportScope" id="keyingScopeKeys" value="keys" style="margin-right:6px;">
+           Keying for selected keys
+         </label>
+         <label class="inline" style="font-size:14px;margin-top:4px;">
+           <input type="radio" name="keyingReportScope" id="keyingScopeDoors" value="doors" style="margin-right:6px;">
+           Keying for selected doors
+         </label>
+         <label class="inline" style="font-size:14px;margin-top:4px;">
+           <input type="radio" name="keyingReportScope" id="keyingScopeCut" value="cut" style="margin-right:6px;">
+           Keys that have been cut
+         </label>
+         <label class="inline" style="font-size:14px;margin-top:4px;">
+           <input type="radio" name="keyingReportScope" id="keyingScopeWithKeying" value="linked" style="margin-right:6px;">
+           Doors with keying
+         </label>
+       </div>
+
+       <div id="keyingSelectedKeysBlock" style="margin-top:10px;display:none;">
+         <div class="muted" style="font-size:13px;margin-bottom:4px;">Selected Keys</div>
+         <div id="keyingReportKeysList"
+              class="out"
+              style="max-height:20vh;overflow:auto;font-size:14px;">
+           <!-- populated by JS when opened -->
+         </div>
+       </div>
+
+       <div id="keyingSelectedDoorsBlock" style="margin-top:10px;display:none;">
+         <div class="muted" style="font-size:13px;margin-bottom:4px;">Selected Doors</div>
+         <div id="keyingReportDoorsList"
+              class="out"
+              style="max-height:20vh;overflow:auto;font-size:14px;">
+           <!-- populated by JS when opened -->
+         </div>
+       </div>
+
+       <div class="btnbar" style="justify-content:flex-end;margin-top:16px;">
+         <button id="keyingReportCancel">Cancel</button>
+         <button class="primary" id="keyingReportGenerate">Generate Report</button>
+       </div>
+     </div>
+   </div>
+
+   <!-- Report Preview – PDF-style layout -->
+   <div id="reportPreviewModal" class="modal" hidden>
+     <div class="backdrop" id="reportPreviewBackdrop"></div>
+     <div class="dialog" style="width:min(96vw,800px);max-height:90vh;overflow:auto;">
+       <h3>System Report Preview</h3>
+       <div id="reportPreviewContent"
+            class="card"
+            style="margin-top:6px;padding:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;box-shadow:none;max-height:none;">
+         <!-- report HTML injected here -->
+       </div>
+       <div class="btnbar" style="justify-content:flex-end;margin-top:16px;">
+         <button id="reportPreviewClose">Close</button>
+         <button id="reportPreviewPhoto">Save to Photos</button>
+         <button class="primary" id="reportPreviewPdf">Download PDF</button>
+       </div>
+     </div>
+   </div>
+
 
 
 
@@ -3365,7 +3560,6 @@ ${pad(beforeLine2,22)}${afterLine2}`;
        const tab = mode || 'notes';
 
        // skeleton: main area + sub-tabs row
-        // skeleton: main area + sub-tabs row
         content.innerHTML = `
           <div id="adminMain" style="min-height:50vh;"></div>
            <div class="btnbar" id="adminTabs" style="margin-top:16px;flex-wrap:wrap;justify-content:flex-start;gap:8px;">
@@ -3373,6 +3567,7 @@ ${pad(beforeLine2,22)}${afterLine2}`;
             <button class="subtabbtn" data-tab="signatories">Signatories</button>
             <button class="subtabbtn" data-tab="parts">System Usage</button>
             <button class="subtabbtn" data-tab="export">Import / Export</button>
+            <button class="subtabbtn" data-tab="reports">Reports</button>
           </div>
         `;
 
@@ -4084,6 +4279,38 @@ ${pad(beforeLine2,22)}${afterLine2}`;
          `;
        }
 
+       // --- REPORTS SUBTAB ---
+       function renderReportsSection(){
+         main.innerHTML = `
+           <div style="display:flex;flex-direction:column;gap:12px;">
+             <label class="muted" style="font-size:16px; font-weight:600;">System Reports</label>
+             <div class="muted" style="font-size:13px;">
+               Choose a report type and configure the options to generate a printable report for this system.
+             </div>
+             <div class="btnbar" style="margin-top:4px;flex-wrap:wrap;gap:8px;justify-content:flex-start;">
+               <button id="reportsKeyBtn">Key Report</button>
+               <button id="reportsDoorBtn">Door Report</button>
+               <button id="reportsKeyingBtn">System Keying</button>
+             </div>
+           </div>
+         `;
+
+
+         const keyBtn    = document.getElementById('reportsKeyBtn');
+         const doorBtn   = document.getElementById('reportsDoorBtn');
+         const keyingBtn = document.getElementById('reportsKeyingBtn');
+
+         if (keyBtn){
+           keyBtn.onclick = openKeyReportModal;
+         }
+         if (doorBtn){
+           doorBtn.onclick = openDoorReportModal;
+         }
+         if (keyingBtn){
+           keyingBtn.onclick = openKeyingReportModal;
+         }
+       }
+
        // pick the right subtab to render
        if (tab === 'signatories'){
          renderSignatoriesSection();
@@ -4091,12 +4318,721 @@ ${pad(beforeLine2,22)}${afterLine2}`;
          renderPartsSection();
        } else if (tab === 'export'){
          renderImportExportSection();
+       } else if (tab === 'reports'){
+         renderReportsSection();
        } else {
          renderNotesSection();
        }
      }
 
-    
+     // ---------- Reports modals + preview logic (Admin → Reports tab) ----------
+
+     function openReportPreview(reportTitle, items, columns){
+       if (!_currentSystem){
+         alert('Open a system first.');
+         return;
+       }
+       const modal = document.getElementById('reportPreviewModal');
+       const bd    = document.getElementById('reportPreviewBackdrop');
+       const host  = document.getElementById('reportPreviewContent');
+
+       if (!modal || !host){
+         alert('Report preview UI is missing.');
+         return;
+       }
+
+       const sys     = _currentSystem;
+       const dateStr = new Date().toLocaleDateString();
+
+       function esc(str){
+         return String(str == null ? '' : str)
+           .replace(/&/g,'&amp;')
+           .replace(/</g,'&lt;')
+           .replace(/>/g,'&gt;');
+       }
+
+       let html = '';
+
+       // Header: CodeGen Systems + date
+       html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:13px;margin-bottom:12px;">';
+       html +=   '<div><strong>CodeGen Systems</strong><br><span class="muted">' + esc(dateStr) + '</span></div>';
+       html += '</div>';
+
+       // Centre title: System Number – Description + report type
+       const sysId   = esc(sys.id || '');
+       const sysDesc = esc(sys.description || '');
+       html += '<div style="text-align:center;margin-bottom:12px;">';
+       html +=   '<div style="font-size:20px;font-weight:700;letter-spacing:0.5px;">' +
+                  (sysId ? sysId : '') +
+                  (sysDesc ? ' – ' + sysDesc : '') +
+                '</div>';
+       html +=   '<div style="margin-top:4px;font-size:15px;font-weight:600;">' + esc(reportTitle) + '</div>';
+       html += '</div>';
+
+       if (!items || !items.length || !columns || !columns.length){
+         html += '<div class="muted" style="margin-top:12px;">No data to show for this report.</div>';
+       } else {
+         html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+         html +=   '<thead><tr>';
+         columns.forEach(col=>{
+           html += '<th style="border-bottom:1px solid #cccccc;text-align:left;padding:6px 8px;font-weight:600;">' +
+                     esc(col.label) +
+                   '</th>';
+         });
+         html +=   '</tr></thead>';
+         html +=   '<tbody>';
+
+         items.forEach(item=>{
+           html += '<tr>';
+           columns.forEach(col=>{
+             let v = (item && col && col.field in item) ? item[col.field] : '';
+             if (v == null) v = '';
+          html += '<td style="border-bottom:1px solid #eeeeee;padding:4px 8px;white-space:pre-line;overflow:hidden;text-overflow:ellipsis;vertical-align:top;">' +
+                    esc(v) +
+                  '</td>';
+           });
+           html += '</tr>';
+         });
+
+         html +=   '</tbody>';
+         html += '</table>';
+       }
+
+       host.innerHTML = html;
+       modal.hidden   = false;
+       if (bd) bd.hidden = false;
+     }
+
+     (function(){
+       const modal   = document.getElementById('reportPreviewModal');
+       if (!modal) return;
+       const bd      = document.getElementById('reportPreviewBackdrop');
+       const btnClose= document.getElementById('reportPreviewClose');
+       const btnPdf  = document.getElementById('reportPreviewPdf');
+       const btnPhoto= document.getElementById('reportPreviewPhoto');
+
+       function closePreview(){
+         modal.hidden = true;
+         if (bd) bd.hidden = true;
+       }
+
+       if (bd)      bd.onclick       = closePreview;
+       if (btnClose) btnClose.onclick = closePreview;
+
+       function triggerPrint(){
+         // iOS / desktop users can Save as PDF or Save to Photos from the print/share sheet
+         window.setTimeout(()=>{ window.print(); }, 10);
+       }
+
+       if (btnPdf)   btnPdf.onclick   = triggerPrint;
+       if (btnPhoto) btnPhoto.onclick = triggerPrint;
+     })();
+
+      // ---- Key Report modal ----
+      function openKeyReportModal(){
+        if (!_currentSystem){
+          alert('Open a system first.');
+          return;
+        }
+        const modal = document.getElementById('keyReportModal');
+        const bd    = document.getElementById('keyReportBackdrop');
+        const list  = document.getElementById('keyReportList');
+        const scopeAllBtn = document.getElementById('keyReportScopeAllBtn');
+        const scopeSelBtn = document.getElementById('keyReportScopeSelectedBtn');
+        const selBlock    = document.getElementById('keyReportSelectionBlock');
+
+        if (list){
+          const keys = Array.isArray(_currentSystem.keys) ? _currentSystem.keys.slice() : [];
+          keys.sort((a,b)=>{
+            const as = String(a.stamping || '').toUpperCase();
+            const bs = String(b.stamping || '').toUpperCase();
+            return as.localeCompare(bs, undefined, {numeric:true,sensitivity:'base'});
+          });
+
+          if (!keys.length){
+            list.innerHTML = '<div class="muted">No keys stored for this system yet.</div>';
+          } else {
+            let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
+            keys.forEach((k, idx)=>{
+              const rawStamp = String(k.stamping || '');
+              const rawDesc  = String(k.description || '');
+              const rawCode  = String(k.code || '');
+              const stampEsc = rawStamp.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              const descEsc  = rawDesc.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              const codeEsc  = rawCode.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              const id = 'krk_' + idx;
+              html += '<label for="' + id + '" style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;">';
+              html +=   '<span>';
+              html +=     '<input id="' + id + '" type="checkbox" data-stamp="' + stampEsc.replace(/"/g,'&quot;') + '" style="margin-right:8px;">';
+              html +=     '<strong>' + (stampEsc || '(no stamping)') + '</strong>';
+              if (descEsc){
+                html += ' – <span class="muted">' + descEsc + '</span>';
+              }
+              html +=   '</span>';
+              if (codeEsc){
+                html +=   '<span class="muted" style="font-size:12px;">' + codeEsc + '</span>';
+              }
+              html += '</label>';
+            });
+            html += '</div>';
+            list.innerHTML = html;
+          }
+        }
+
+      if (scopeAllBtn && scopeSelBtn){
+        scopeAllBtn.classList.add('selected');
+        scopeSelBtn.classList.remove('selected');
+      }
+      // Start in "All Keys" mode: hide the list but keep the buttons visible
+      if (list){
+        list.style.display = 'none';
+      }
+
+      if (modal) modal.hidden = false;
+      if (bd)    bd.hidden    = false;
+    }
+
+
+      (function(){
+        const modal = document.getElementById('keyReportModal');
+        if (!modal) return;
+       const bd        = document.getElementById('keyReportBackdrop');
+       const cancelBtn = document.getElementById('keyReportCancel');
+       const genBtn    = document.getElementById('keyReportGenerate');
+       const scopeAll  = document.getElementById('keyReportScopeAllBtn');
+       const scopeSel  = document.getElementById('keyReportScopeSelectedBtn');
+       const selectionList = document.getElementById('keyReportList');
+
+       function closeKeyReport(){
+         modal.hidden = true;
+         if (bd) bd.hidden = true;
+       }
+
+       function updateKeyReportSelectionVisibility(){
+         if (!selectionList) return;
+         const isSelectedMode = scopeSel && scopeSel.classList.contains('selected');
+         selectionList.style.display = isSelectedMode ? '' : 'none';
+       }
+
+
+      function setScope(mode){
+        if (!scopeAll || !scopeSel) return;
+        if (mode === 'all'){
+          scopeAll.classList.add('selected');
+          scopeSel.classList.remove('selected');
+        } else {
+          scopeAll.classList.remove('selected');
+          scopeSel.classList.add('selected');
+        }
+        updateKeyReportSelectionVisibility();
+      }
+
+
+      if (bd)        bd.onclick      = closeKeyReport;
+      if (cancelBtn) cancelBtn.onclick = closeKeyReport;
+
+      if (scopeAll) scopeAll.onclick = ()=> setScope('all');
+      if (scopeSel) scopeSel.onclick = ()=> setScope('selected');
+
+      // ensure block is hidden when modal is first loaded (All Keys)
+      updateKeyReportSelectionVisibility();
+
+       if (genBtn){
+         genBtn.onclick = ()=>{
+           if (!_currentSystem){
+             alert('Open a system first.');
+             return;
+           }
+
+           const colStamp = document.getElementById('keyReportColStamping');
+           const colDesc  = document.getElementById('keyReportColDescription');
+           const colCode  = document.getElementById('keyReportColCode');
+           const colColour= document.getElementById('keyReportColColour');
+           const colQty   = document.getElementById('keyReportColQty');
+
+           const cols = [];
+           if (colStamp && colStamp.checked)  cols.push({ field:'stamping',    label:'Key Stamping' });
+           if (colDesc  && colDesc.checked)   cols.push({ field:'description', label:'Key Description' });
+           if (colCode  && colCode.checked)   cols.push({ field:'code',        label:'Key Code' });
+           if (colColour&& colColour.checked) cols.push({ field:'colour',      label:'Key Colour' });
+           if (colQty   && colQty.checked)    cols.push({ field:'qty',         label:'Qty' });
+
+           if (!cols.length){
+             alert('Please select at least one column to include.');
+             return;
+           }
+
+            const keysAll = Array.isArray(_currentSystem.keys) ? _currentSystem.keys.slice() : [];
+            // Preserve the same order as the Keys page (no extra sorting here)
+
+            const isSelectedMode = scopeSel && scopeSel.classList.contains('selected');
+            let items = keysAll;
+
+           if (isSelectedMode){
+             const list = document.getElementById('keyReportList');
+             if (list){
+               const boxes = list.querySelectorAll('input[type=checkbox]');
+               const stamps = [];
+               boxes.forEach(box=>{
+                 if (box.checked){
+                   const s = box.getAttribute('data-stamp') || '';
+                   stamps.push(s);
+                 }
+               });
+               if (!stamps.length){
+                 alert('Select at least one key, or switch back to "All Keys".');
+                 return;
+               }
+               const wanted = new Set(stamps.map(s=>String(s).replace(/&[^;]*;/g,'').toUpperCase()));
+               items = keysAll.filter(k =>
+                 wanted.has(String(k.stamping || '').toUpperCase())
+               );
+             }
+           }
+
+           openReportPreview('Key Report', items, cols);
+           closeKeyReport();
+         };
+       }
+     })();
+
+      // ---- Door Report modal ----
+      function openDoorReportModal(){
+        if (!_currentSystem){
+          alert('Open a system first.');
+          return;
+        }
+        const modal = document.getElementById('doorReportModal');
+        const bd    = document.getElementById('doorReportBackdrop');
+        const list  = document.getElementById('doorReportList');
+        const scopeAllBtn = document.getElementById('doorReportScopeAllBtn');
+        const scopeSelBtn = document.getElementById('doorReportScopeSelectedBtn');
+        const selBlock    = document.getElementById('doorReportSelectionBlock');
+
+        if (list){
+          const doors = Array.isArray(_currentSystem.doors) ? _currentSystem.doors.slice() : [];
+          // Use the same order as the Doors view (no extra sorting here)
+
+          if (!doors.length){
+            list.innerHTML = '<div class="muted">No doors stored for this system yet.</div>';
+          } else {
+            let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
+            doors.forEach((d, idx)=>{
+              const rawStamp = String(d.stamping || '');
+              const rawDesc  = String(d.description || '');
+              const rawPart  = String(d.part || d.partNumber || '');
+              const stampEsc = rawStamp.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              const descEsc  = rawDesc.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              const partEsc  = rawPart.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              const id = 'drd_' + idx;
+              html += '<label for="' + id + '" style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;">';
+              html +=   '<span>';
+              html +=     '<input id="' + id + '" type="checkbox" data-stamp="' + stampEsc.replace(/"/g,'&quot;') + '" style="margin-right:8px;">';
+              html +=     '<strong>' + (stampEsc || '(no stamping)') + '</strong>';
+              if (descEsc){
+                html += ' – <span class="muted">' + descEsc + '</span>';
+              }
+              html +=   '</span>';
+              if (partEsc){
+                html +=   '<span class="muted" style="font-size:12px;">' + partEsc + '</span>';
+              }
+              html += '</label>';
+            });
+            html += '</div>';
+            list.innerHTML = html;
+          }
+        }
+
+      if (scopeAllBtn && scopeSelBtn){
+        scopeAllBtn.classList.add('selected');
+        scopeSelBtn.classList.remove('selected');
+      }
+      // Start in "All Doors" mode: hide the list but keep the buttons visible
+      if (list){
+        list.style.display = 'none';
+      }
+
+      if (modal) modal.hidden = false;
+      if (bd)    bd.hidden    = false;
+    }
+
+
+      (function(){
+        const modal = document.getElementById('doorReportModal');
+        if (!modal) return;
+       const bd        = document.getElementById('doorReportBackdrop');
+       const cancelBtn = document.getElementById('doorReportCancel');
+       const genBtn    = document.getElementById('doorReportGenerate');
+       const scopeAll  = document.getElementById('doorReportScopeAllBtn');
+       const scopeSel  = document.getElementById('doorReportScopeSelectedBtn');
+       const selectionList = document.getElementById('doorReportList');
+
+       function closeDoorReport(){
+         modal.hidden = true;
+         if (bd) bd.hidden = true;
+       }
+
+       function updateDoorReportSelectionVisibility(){
+         if (!selectionList) return;
+         const isSelectedMode = scopeSel && scopeSel.classList.contains('selected');
+         selectionList.style.display = isSelectedMode ? '' : 'none';
+       }
+
+
+      function setScope(mode){
+        if (!scopeAll || !scopeSel) return;
+        if (mode === 'all'){
+          scopeAll.classList.add('selected');
+          scopeSel.classList.remove('selected');
+        } else {
+          scopeAll.classList.remove('selected');
+          scopeSel.classList.add('selected');
+        }
+        updateDoorReportSelectionVisibility();
+      }
+
+
+      if (bd)        bd.onclick      = closeDoorReport;
+      if (cancelBtn) cancelBtn.onclick = closeDoorReport;
+
+      if (scopeAll) scopeAll.onclick = ()=> setScope('all');
+      if (scopeSel) scopeSel.onclick = ()=> setScope('selected');
+
+      // ensure block is hidden when modal is first loaded (All Doors)
+      updateDoorReportSelectionVisibility();
+
+       if (genBtn){
+         genBtn.onclick = ()=>{
+           if (!_currentSystem){
+             alert('Open a system first.');
+             return;
+           }
+
+           const colStamp = document.getElementById('doorReportColStamping');
+           const colDesc  = document.getElementById('doorReportColDescription');
+           const colPart  = document.getElementById('doorReportColPart');
+           const colNotes = document.getElementById('doorReportColNotes');
+
+           const cols = [];
+           if (colStamp && colStamp.checked) cols.push({ field:'stamping',    label:'Door Stamping' });
+           if (colDesc  && colDesc.checked)  cols.push({ field:'description', label:'Door Description' });
+           if (colPart  && colPart.checked)  cols.push({ field:'part',        label:'Part Number' });
+           if (colNotes && colNotes.checked) cols.push({ field:'notes',       label:'Door Notes' });
+
+           if (!cols.length){
+             alert('Please select at least one column to include.');
+             return;
+           }
+
+           const doorsAll = Array.isArray(_currentSystem.doors) ? _currentSystem.doors.slice() : [];
+           doorsAll.sort((a,b)=>{
+             const as = String(a.stamping || '').toUpperCase();
+             const bs = String(b.stamping || '').toUpperCase();
+             return as.localeCompare(bs, undefined, {numeric:true,sensitivity:'base'});
+           });
+
+           const isSelectedMode = scopeSel && scopeSel.classList.contains('selected');
+           let items = doorsAll;
+
+           if (isSelectedMode){
+             const list = document.getElementById('doorReportList');
+             if (list){
+               const boxes = list.querySelectorAll('input[type=checkbox]');
+               const stamps = [];
+               boxes.forEach(box=>{
+                 if (box.checked){
+                   const s = box.getAttribute('data-stamp') || '';
+                   stamps.push(s);
+                 }
+               });
+               if (!stamps.length){
+                 alert('Select at least one door, or switch back to "All Doors".');
+                 return;
+               }
+               const wanted = new Set(stamps.map(s=>String(s).replace(/&[^;]*;/g,'').toUpperCase()));
+               items = doorsAll.filter(d =>
+                 wanted.has(String(d.stamping || '').toUpperCase())
+               );
+             }
+           }
+
+           openReportPreview('Door Report', items, cols);
+           closeDoorReport();
+         };
+       }
+     })();
+
+      // ---- Keying Report modal ----
+      function openKeyingReportModal(){
+        if (!_currentSystem){
+          alert('Open a system first.');
+          return;
+        }
+        const modal    = document.getElementById('keyingReportModal');
+        const bd       = document.getElementById('keyingReportBackdrop');
+        const keysList = document.getElementById('keyingReportKeysList');
+        const doorsList= document.getElementById('keyingReportDoorsList');
+
+        if (keysList){
+          const keys = Array.isArray(_currentSystem.keys) ? _currentSystem.keys.slice() : [];
+          keys.sort((a,b)=>{
+            const as = String(a.stamping || '').toUpperCase();
+            const bs = String(b.stamping || '').toUpperCase();
+            return as.localeCompare(bs, undefined, {numeric:true,sensitivity:'base'});
+          });
+
+          if (!keys.length){
+            keysList.innerHTML = '<div class="muted">No keys stored for this system yet.</div>';
+          } else {
+            let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
+            keys.forEach((k, idx)=>{
+              const rawStamp = String(k.stamping || '');
+              const rawDesc  = String(k.description || '');
+              const stampEsc = rawStamp.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              const descEsc  = rawDesc.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              const id = 'kyrk_' + idx;
+              html += '<label for="' + id + '" style="display:flex;align-items:center;padding:2px 0;">';
+              html +=   '<input id="' + id + '" type="checkbox" data-stamp="' + stampEsc.replace(/"/g,'&quot;') + '" style="margin-right:8px;">';
+              html +=   '<strong>' + (stampEsc || '(no stamping)') + '</strong>';
+              if (descEsc){
+                html += ' – <span class="muted">' + descEsc + '</span>';
+              }
+              html += '</label>';
+            });
+            html += '</div>';
+            keysList.innerHTML = html;
+          }
+        }
+
+        if (doorsList){
+          const doors = Array.isArray(_currentSystem.doors) ? _currentSystem.doors.slice() : [];
+          doors.sort((a,b)=>{
+            const as = String(a.stamping || '').toUpperCase();
+            const bs = String(b.stamping || '').toUpperCase();
+            return as.localeCompare(bs, undefined, {numeric:true,sensitivity:'base'});
+          });
+
+          if (!doors.length){
+            doorsList.innerHTML = '<div class="muted">No doors stored for this system yet.</div>';
+          } else {
+            let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
+            doors.forEach((d, idx)=>{
+              const rawStamp = String(d.stamping || '');
+              const rawDesc  = String(d.description || '');
+              const stampEsc = rawStamp.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              const descEsc  = rawDesc.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              const id = 'kyrd_' + idx;
+              html += '<label for="' + id + '" style="display:flex;align-items:center;padding:2px 0;">';
+              html +=   '<input id="' + id + '" type="checkbox" data-stamp="' + stampEsc.replace(/"/g,'&quot;') + '" style="margin-right:8px;">';
+              html +=   '<strong>' + (stampEsc || '(no stamping)') + '</strong>';
+              if (descEsc){
+                html += ' – <span class="muted">' + descEsc + '</span>';
+              }
+              html += '</label>';
+            });
+            html += '</div>';
+            doorsList.innerHTML = html;
+          }
+        }
+
+        // reset scope + selection blocks each time the modal opens
+        const scopeAll   = document.getElementById('keyingScopeAll');
+        const scopeKeys  = document.getElementById('keyingScopeKeys');
+        const scopeDoors = document.getElementById('keyingScopeDoors');
+        const scopeCut   = document.getElementById('keyingScopeCut');
+        const scopeLink  = document.getElementById('keyingScopeWithKeying');
+        if (scopeAll)  scopeAll.checked  = true;
+        if (scopeKeys) scopeKeys.checked = false;
+        if (scopeDoors)scopeDoors.checked= false;
+        if (scopeCut)  scopeCut.checked  = false;
+        if (scopeLink) scopeLink.checked = false;
+
+        const keysBlock  = document.getElementById('keyingSelectedKeysBlock');
+        const doorsBlock = document.getElementById('keyingSelectedDoorsBlock');
+        if (keysBlock)  keysBlock.style.display  = 'none';
+        if (doorsBlock) doorsBlock.style.display = 'none';
+
+        if (modal) modal.hidden = false;
+        if (bd)    bd.hidden    = false;
+      }
+
+
+     (function(){
+       const modal = document.getElementById('keyingReportModal');
+       if (!modal) return;
+       const bd        = document.getElementById('keyingReportBackdrop');
+       const cancelBtn = document.getElementById('keyingReportCancel');
+       const genBtn    = document.getElementById('keyingReportGenerate');
+
+       const scopeAll   = document.getElementById('keyingScopeAll');
+       const scopeKeys  = document.getElementById('keyingScopeKeys');
+       const scopeDoors = document.getElementById('keyingScopeDoors');
+       const scopeCut   = document.getElementById('keyingScopeCut');
+       const scopeLink  = document.getElementById('keyingScopeWithKeying');
+
+       const keysBlock  = document.getElementById('keyingSelectedKeysBlock');
+       const doorsBlock = document.getElementById('keyingSelectedDoorsBlock');
+
+       function closeKeyingReport(){
+         modal.hidden = true;
+         if (bd) bd.hidden = true;
+       }
+
+       function updateKeyingSelectionVisibility(){
+         if (keysBlock)  keysBlock.style.display  = 'none';
+         if (doorsBlock) doorsBlock.style.display = 'none';
+
+         const modeEl = document.querySelector('input[name="keyingReportScope"]:checked');
+         const mode   = modeEl ? modeEl.value : 'all';
+
+         if (mode === 'keys'){
+           if (keysBlock) keysBlock.style.display = '';
+         } else if (mode === 'doors'){
+           if (doorsBlock) doorsBlock.style.display = '';
+         }
+         // modes 'all', 'cut', 'linked' keep both hidden
+       }
+
+       if (bd)        bd.onclick      = closeKeyingReport;
+       if (cancelBtn) cancelBtn.onclick = closeKeyingReport;
+
+       if (scopeAll)   scopeAll.onclick   = updateKeyingSelectionVisibility;
+       if (scopeKeys)  scopeKeys.onclick  = updateKeyingSelectionVisibility;
+       if (scopeDoors) scopeDoors.onclick = updateKeyingSelectionVisibility;
+       if (scopeCut)   scopeCut.onclick   = updateKeyingSelectionVisibility;
+       if (scopeLink)  scopeLink.onclick  = updateKeyingSelectionVisibility;
+
+       // initial state: “all” → both hidden
+       updateKeyingSelectionVisibility();
+
+       if (genBtn){
+         genBtn.onclick = ()=>{
+           if (!_currentSystem){
+             alert('Open a system first.');
+             return;
+           }
+
+           const scopeEl = document.querySelector('input[name="keyingReportScope"]:checked');
+           const mode = scopeEl ? scopeEl.value : 'all';
+
+           const keys  = Array.isArray(_currentSystem.keys)  ? _currentSystem.keys.slice()  : [];
+           const doors = Array.isArray(_currentSystem.doors) ? _currentSystem.doors.slice() : [];
+
+           const keyByStamp = new Map();
+           keys.forEach(k=>{
+             const stamp = String(k.stamping || '').toUpperCase();
+             if (!stamp) return;
+             keyByStamp.set(stamp, k);
+           });
+
+           const keySelStamps = new Set();
+           const doorSelStamps= new Set();
+
+           const keysList = document.getElementById('keyingReportKeysList');
+           if (keysList){
+             const boxes = keysList.querySelectorAll('input[type=checkbox]');
+             boxes.forEach(b=>{
+               if (b.checked){
+                 const s = (b.getAttribute('data-stamp') || '').replace(/&[^;]*;/g,'');
+                 if (s) keySelStamps.add(s.toUpperCase());
+               }
+             });
+           }
+
+           const doorsList = document.getElementById('keyingReportDoorsList');
+           if (doorsList){
+             const boxes = doorsList.querySelectorAll('input[type=checkbox]');
+             boxes.forEach(b=>{
+               if (b.checked){
+                 const s = (b.getAttribute('data-stamp') || '').replace(/&[^;]*;/g,'');
+                 if (s) doorSelStamps.add(s.toUpperCase());
+               }
+             });
+           }
+
+           if (mode === 'keys' && !keySelStamps.size){
+             alert('Select at least one key or choose a different option.');
+             return;
+           }
+           if (mode === 'doors' && !doorSelStamps.size){
+             alert('Select at least one door or choose a different option.');
+             return;
+           }
+
+           function doorHasLinkedKeys(d){
+             const arr = Array.isArray(d.keys) ? d.keys : [];
+             return arr.some(s => String(s || '').trim());
+           }
+
+           function doorMatches(d){
+             const stampUp = String(d.stamping || '').toUpperCase();
+             const keyStamps = Array.isArray(d.keys)
+               ? d.keys.map(s=>String(s || '').toUpperCase())
+               : [];
+
+             if (mode === 'all') return true;
+             if (mode === 'doors') return doorSelStamps.has(stampUp);
+             if (mode === 'keys'){
+               return keyStamps.some(s => keySelStamps.has(s));
+             }
+             if (mode === 'cut'){
+               return keyStamps.some(s=>{
+                 const k = keyByStamp.get(s);
+                 return k && (k.qty || 0) > 0;
+               });
+             }
+             if (mode === 'linked'){
+               return doorHasLinkedKeys(d);
+             }
+             return true;
+           }
+
+           doors.sort((a,b)=>{
+             const as = String(a.stamping || '').toUpperCase();
+             const bs = String(b.stamping || '').toUpperCase();
+             return as.localeCompare(bs, undefined, {numeric:true,sensitivity:'base'});
+           });
+
+           const chosenDoors = doors.filter(doorMatches);
+
+           const items = chosenDoors.map(d=>{
+             const stamp = String(d.stamping || '');
+             const desc  = String(d.description || '');
+             const keyStamps = Array.isArray(d.keys) ? d.keys : [];
+             const labelParts = keyStamps.map(s=>{
+               const sStr = String(s || '');
+               const k = keyByStamp.get(sStr.toUpperCase());
+               if (k && k.description){
+                 return sStr + ' (' + k.description + ')';
+               }
+               return sStr;
+             }).filter(Boolean);
+
+             // One key per line, with a bullet
+             const keysLabel = labelParts.length
+               ? labelParts.map(txt => '• ' + txt).join('\n')
+               : '(no keys added)';
+
+             return {
+               doorStamp : stamp,
+               doorDesc  : desc,
+               keysLabel : keysLabel
+             };
+           });
+
+
+           const cols = [
+             { field:'doorStamp', label:'Door Stamping' },
+             { field:'doorDesc',  label:'Door Description' },
+             { field:'keysLabel', label:'Keys' }
+           ];
+
+           openReportPreview('Keying Report', items, cols);
+           closeKeyingReport();
+         };
+       }
+     })();
+
 
 
   // ---- Coding Tree main view (with sub-tabs) ----
