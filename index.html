@@ -4490,13 +4490,29 @@ ${pad(beforeLine2,22)}${afterLine2}`;
             const scale       = usableWidth / imgWidthPx;
             // Height (in canvas px) that fits on one page at that scale
             const sliceHeightPx = usableHeight / scale;
+            // Approximate line height in canvas pixels so we cut between lines,
+            // not through the middle of them. Tweak if you ever change font/size.
+            const approxLinePx  = 40;
 
             let remainingPx = imgHeightPx;
             let offsetPx    = 0;
             let firstPage   = true;
 
             while (remainingPx > 0){
-              const currentSlicePx = Math.min(sliceHeightPx, remainingPx);
+              const maxSlice = Math.min(sliceHeightPx, remainingPx);
+
+              // Round down to the nearest whole "line" so we don't chop a line in half
+              let lines = Math.floor(maxSlice / approxLinePx);
+              if (lines < 1){
+                // If there's less than one line of space, just put whatever is left
+                // on the final page.
+                lines = 1;
+              }
+
+              let currentSlicePx = lines * approxLinePx;
+              if (currentSlicePx > remainingPx){
+                currentSlicePx = remainingPx;
+              }
 
               const sliceCanvas = document.createElement('canvas');
               sliceCanvas.width  = imgWidthPx;
