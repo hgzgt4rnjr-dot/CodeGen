@@ -4468,7 +4468,6 @@ ${pad(beforeLine2,22)}${afterLine2}`;
               scale: 2,
               useCORS: true
             });
-            const imgData = canvas.toDataURL('image/png');
 
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF({
@@ -4477,23 +4476,69 @@ ${pad(beforeLine2,22)}${afterLine2}`;
               format: 'a4'
             });
 
-            const pageWidth  = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            const imgWidth   = canvas.width;
-            const imgHeight  = canvas.height;
-            const ratio      = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
-            const renderWidth  = imgWidth * ratio;
-            const renderHeight = imgHeight * ratio;
-            const x = (pageWidth - renderWidth) / 2;
-            const y = 40;
+            const pageWidth   = pdf.internal.pageSize.getWidth();
+            const pageHeight  = pdf.internal.pageSize.getHeight();
+            const marginX     = 40;
+            const marginY     = 40;
+            const usableWidth = pageWidth  - marginX * 2;
+            const usableHeight= pageHeight - marginY * 2;
 
-            pdf.addImage(imgData, 'PNG', x, y, renderWidth, renderHeight);
-            pdf.save('CodeGen_Report_' + Date.now() + '.pdf');
+            const imgWidthPx  = canvas.width;
+            const imgHeightPx = canvas.height;
+
+            // Scale so the report fits the page width inside margins
+            const scale       = usableWidth / imgWidthPx;
+            // Height (in canvas px) that fits on one page at that scale
+            const sliceHeightPx = usableHeight / scale;
+
+            let remainingPx = imgHeightPx;
+            let offsetPx    = 0;
+            let firstPage   = true;
+
+            while (remainingPx > 0){
+              const currentSlicePx = Math.min(sliceHeightPx, remainingPx);
+
+              const sliceCanvas = document.createElement('canvas');
+              sliceCanvas.width  = imgWidthPx;
+              sliceCanvas.height = currentSlicePx;
+
+              const ctx = sliceCanvas.getContext('2d');
+              ctx.drawImage(
+                canvas,
+                0, offsetPx,                      // source x,y
+                imgWidthPx, currentSlicePx,       // source w,h
+                0, 0,                             // dest x,y
+                imgWidthPx, currentSlicePx        // dest w,h
+              );
+
+              const sliceDataUrl = sliceCanvas.toDataURL('image/png');
+              if (!firstPage){
+                pdf.addPage();
+              } else {
+                firstPage = false;
+              }
+
+              const renderedHeightPt = currentSlicePx * scale;
+              pdf.addImage(
+                sliceDataUrl,
+                'PNG',
+                marginX,
+                marginY,
+                usableWidth,
+                renderedHeightPt
+              );
+
+              offsetPx   += currentSlicePx;
+              remainingPx-= currentSlicePx;
+            }
+
+            pdf.save('CodeGen_Report.pdf');
           }catch(e){
-            console.error('Download PDF failed', e);
+            console.error('Save as PDF failed', e);
             fallbackPrint('Could not generate a PDF for this report.');
           }
         }
+
 
         if (btnPhoto) btnPhoto.onclick = saveReportAsPng;
         if (btnPdf)   btnPdf.onclick   = saveReportAsPdf;
@@ -4515,14 +4560,11 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
         if (list){
           const keys = Array.isArray(_currentSystem.keys) ? _currentSystem.keys.slice() : [];
-          keys.sort((a,b)=>{
-            const as = String(a.stamping || '').toUpperCase();
-            const bs = String(b.stamping || '').toUpperCase();
-            return as.localeCompare(bs, undefined, {numeric:true,sensitivity:'base'});
-          });
+          // Preserve the same order as the Keys page (no extra sorting here)
 
           if (!keys.length){
             list.innerHTML = '<div class="muted">No keys stored for this system yet.</div>';
+
           } else {
             let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
             keys.forEach((k, idx)=>{
@@ -4797,13 +4839,10 @@ ${pad(beforeLine2,22)}${afterLine2}`;
            }
 
            const doorsAll = Array.isArray(_currentSystem.doors) ? _currentSystem.doors.slice() : [];
-           doorsAll.sort((a,b)=>{
-             const as = String(a.stamping || '').toUpperCase();
-             const bs = String(b.stamping || '').toUpperCase();
-             return as.localeCompare(bs, undefined, {numeric:true,sensitivity:'base'});
-           });
+           // Preserve the same order as the Doors page (no extra sorting here)
 
            const isSelectedMode = scopeSel && scopeSel.classList.contains('selected');
+
            let items = doorsAll;
 
            if (isSelectedMode){
@@ -4847,14 +4886,11 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
         if (keysList){
           const keys = Array.isArray(_currentSystem.keys) ? _currentSystem.keys.slice() : [];
-          keys.sort((a,b)=>{
-            const as = String(a.stamping || '').toUpperCase();
-            const bs = String(b.stamping || '').toUpperCase();
-            return as.localeCompare(bs, undefined, {numeric:true,sensitivity:'base'});
-          });
+          // Preserve original key order (same as Keys menu)
 
           if (!keys.length){
             keysList.innerHTML = '<div class="muted">No keys stored for this system yet.</div>';
+
           } else {
             let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
             keys.forEach((k, idx)=>{
@@ -4878,14 +4914,11 @@ ${pad(beforeLine2,22)}${afterLine2}`;
 
         if (doorsList){
           const doors = Array.isArray(_currentSystem.doors) ? _currentSystem.doors.slice() : [];
-          doors.sort((a,b)=>{
-            const as = String(a.stamping || '').toUpperCase();
-            const bs = String(b.stamping || '').toUpperCase();
-            return as.localeCompare(bs, undefined, {numeric:true,sensitivity:'base'});
-          });
+          // Preserve original door order (same as Doors menu)
 
           if (!doors.length){
             doorsList.innerHTML = '<div class="muted">No doors stored for this system yet.</div>';
+
           } else {
             let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
             doors.forEach((d, idx)=>{
@@ -5059,13 +5092,9 @@ ${pad(beforeLine2,22)}${afterLine2}`;
              return true;
            }
 
-           doors.sort((a,b)=>{
-             const as = String(a.stamping || '').toUpperCase();
-             const bs = String(b.stamping || '').toUpperCase();
-             return as.localeCompare(bs, undefined, {numeric:true,sensitivity:'base'});
-           });
-
+           // Preserve original door order (no extra sorting here)
            const chosenDoors = doors.filter(doorMatches);
+
 
            const items = chosenDoors.map(d=>{
              const stamp = String(d.stamping || '');
