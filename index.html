@@ -1477,7 +1477,7 @@
    <div id="keyingReportModal" class="modal" hidden>
      <div class="backdrop" id="keyingReportBackdrop"></div>
      <div class="dialog">
-       <h3>System Keying</h3>
+       <h3>Keying Report</h3>
        <p class="muted" style="margin:4px 0 10px 0;">
          Choose which keying information to include in the report.
        </p>
@@ -4287,13 +4287,18 @@ ${pad(beforeLine2,22)}${afterLine2}`;
              <div class="muted" style="font-size:13px;">
                Choose a report type and configure the options to generate a printable report for this system.
              </div>
-             <div class="btnbar" style="margin-top:4px;flex-wrap:wrap;gap:8px;justify-content:flex-start;">
-               <button id="reportsKeyBtn">Key Report</button>
-               <button id="reportsDoorBtn">Door Report</button>
-               <button id="reportsKeyingBtn">System Keying</button>
+             <div class="btnbar" style="margin-top:4px;display:flex;flex-direction:column;gap:10px;align-items:center;">
+               <button id="reportsKeyBtn" style="width:100%;max-width:500px;">Key Report</button>
+               <button id="reportsDoorBtn" style="width:100%;max-width:500px;">Door Report</button>
+               <button id="reportsKeyingBtn" style="width:100%;max-width:500px;">Keying Report</button>
              </div>
+
            </div>
          `;
+      
+
+       
+
 
 
          const keyBtn    = document.getElementById('reportsKeyBtn');
@@ -4403,30 +4408,104 @@ ${pad(beforeLine2,22)}${afterLine2}`;
        if (bd) bd.hidden = false;
      }
 
-     (function(){
-       const modal   = document.getElementById('reportPreviewModal');
-       if (!modal) return;
-       const bd      = document.getElementById('reportPreviewBackdrop');
-       const btnClose= document.getElementById('reportPreviewClose');
-       const btnPdf  = document.getElementById('reportPreviewPdf');
-       const btnPhoto= document.getElementById('reportPreviewPhoto');
+      (function(){
+        const modal    = document.getElementById('reportPreviewModal');
+        if (!modal) return;
+        const bd       = document.getElementById('reportPreviewBackdrop');
+        const btnClose = document.getElementById('reportPreviewClose');
+        const btnPdf   = document.getElementById('reportPreviewPdf');
+        const btnPhoto = document.getElementById('reportPreviewPhoto');
+        const content  = document.getElementById('reportPreviewContent');
 
-       function closePreview(){
-         modal.hidden = true;
-         if (bd) bd.hidden = true;
-       }
+        function closePreview(){
+          modal.hidden = true;
+          if (bd) bd.hidden = true;
+        }
 
-       if (bd)      bd.onclick       = closePreview;
-       if (btnClose) btnClose.onclick = closePreview;
+        if (bd)       bd.onclick        = closePreview;
+        if (btnClose) btnClose.onclick  = closePreview;
 
-       function triggerPrint(){
-         // iOS / desktop users can Save as PDF or Save to Photos from the print/share sheet
-         window.setTimeout(()=>{ window.print(); }, 10);
-       }
+        function fallbackPrint(msg){
+          if (msg){
+            alert(msg + '\nFalling back to the browser print dialog.');
+          }
+          window.setTimeout(()=>{ window.print(); }, 10);
+        }
 
-       if (btnPdf)   btnPdf.onclick   = triggerPrint;
-       if (btnPhoto) btnPhoto.onclick = triggerPrint;
-     })();
+        async function saveReportAsPng(){
+          if (!content){
+            fallbackPrint('No report content to export.');
+            return;
+          }
+          if (typeof html2canvas !== 'function'){
+            fallbackPrint('Screenshot helper (html2canvas) is not available offline.');
+            return;
+          }
+          try{
+            const canvas = await html2canvas(content, {
+              backgroundColor: getComputedStyle(document.body).backgroundColor || '#ffffff',
+              scale: 2,
+              useCORS: true
+            });
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = 'CodeGen_Report_' + Date.now() + '.png';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+          }catch(e){
+            console.error('Save to Photos failed', e);
+            fallbackPrint('Could not generate an image for this report.');
+          }
+        }
+
+        async function saveReportAsPdf(){
+          if (!content){
+            fallbackPrint('No report content to export.');
+            return;
+          }
+          if (typeof html2canvas !== 'function' || !window.jspdf || !window.jspdf.jsPDF){
+            fallbackPrint('PDF helpers (html2canvas / jsPDF) are not available offline.');
+            return;
+          }
+          try{
+            const canvas = await html2canvas(content, {
+              backgroundColor: '#ffffff',
+              scale: 2,
+              useCORS: true
+            });
+            const imgData = canvas.toDataURL('image/png');
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({
+              orientation: 'portrait',
+              unit: 'pt',
+              format: 'a4'
+            });
+
+            const pageWidth  = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth   = canvas.width;
+            const imgHeight  = canvas.height;
+            const ratio      = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
+            const renderWidth  = imgWidth * ratio;
+            const renderHeight = imgHeight * ratio;
+            const x = (pageWidth - renderWidth) / 2;
+            const y = 40;
+
+            pdf.addImage(imgData, 'PNG', x, y, renderWidth, renderHeight);
+            pdf.save('CodeGen_Report_' + Date.now() + '.pdf');
+          }catch(e){
+            console.error('Download PDF failed', e);
+            fallbackPrint('Could not generate a PDF for this report.');
+          }
+        }
+
+        if (btnPhoto) btnPhoto.onclick = saveReportAsPng;
+        if (btnPdf)   btnPdf.onclick   = saveReportAsPdf;
+      })();
+
 
       // ---- Key Report modal ----
       function openKeyReportModal(){
@@ -5000,13 +5079,9 @@ ${pad(beforeLine2,22)}${afterLine2}`;
              const desc  = String(d.description || '');
              const keyStamps = Array.isArray(d.keys) ? d.keys : [];
              const labelParts = keyStamps.map(s=>{
-               const sStr = String(s || '');
-               const k = keyByStamp.get(sStr.toUpperCase());
-               if (k && k.description){
-                 return sStr + ' (' + k.description + ')';
-               }
-               return sStr;
+               return String(s || '');
              }).filter(Boolean);
+
 
              // One key per line, with a bullet
              const keysLabel = labelParts.length
