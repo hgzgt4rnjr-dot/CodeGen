@@ -10,7 +10,9 @@ const ASSETS = [
   "./background.png",
   "./backgroundC.png",
   "./icon-192.png",
-  "./icon-512.png"
+  "./icon-512.png",
+  "./html2canvas.min.js",
+  "./jspdf.umd.min.js"
 ];
 
 
